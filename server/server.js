@@ -7,8 +7,6 @@ import { dirname, join } from 'path';
 import { initializeDatabase } from './utils/database.js';
 import { Product } from './models/Product.js';
 import { User } from './models/User.js';
-import { seedAll } from './scripts/seedAll.js';
-
 import authRoutes from './routes/auth.js';
 import productRoutes from './routes/products.js';
 import cartRoutes from './routes/cart.js';
@@ -76,12 +74,6 @@ async function start() {
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
     await User.createAdmin({ email: adminEmail, password: adminPassword });
     console.log(`Admin user created/verified: ${adminEmail}`);
-
-    // Seed dummy data if SEED_DB is set
-    if (process.env.SEED_DB === 'true') {
-      console.log('SEED_DB is set, seeding database...');
-      await seedAll();
-    }
 
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
