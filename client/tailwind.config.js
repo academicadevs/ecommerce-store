@@ -1,0 +1,96 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        // Academica Brand Colors
+        'academica-blue': {
+          DEFAULT: '#004680',
+          50: '#e6f0f7',
+          100: '#b3d1e6',
+          200: '#80b2d4',
+          300: '#4d93c3',
+          400: '#2679b4',
+          500: '#004680',
+          600: '#003d70',
+          700: '#003360',
+          800: '#002a50',
+          900: '#001f3d',
+        },
+        'sapphire': {
+          DEFAULT: '#0F52BA',
+          50: '#e7eef9',
+          100: '#b8ccee',
+          200: '#89aae3',
+          300: '#5a88d8',
+          400: '#3570cf',
+          500: '#0F52BA',
+          600: '#0d48a3',
+          700: '#0b3d8c',
+          800: '#093375',
+          900: '#06255a',
+        },
+        'terracotta': {
+          DEFAULT: '#E2725B',
+          50: '#fdf3f1',
+          100: '#f9ddd7',
+          200: '#f4c7bd',
+          300: '#efb1a3',
+          400: '#eb9f8e',
+          500: '#E2725B',
+          600: '#d85a40',
+          700: '#c04832',
+          800: '#9f3b29',
+          900: '#7e2f21',
+        },
+        'charcoal': {
+          DEFAULT: '#36454F',
+          50: '#eceeef',
+          100: '#c5cbce',
+          200: '#9ea8ad',
+          300: '#77858c',
+          400: '#566a73',
+          500: '#36454F',
+          600: '#2f3c45',
+          700: '#28333b',
+          800: '#212a31',
+          900: '#181f24',
+        },
+        'academica-red': {
+          DEFAULT: '#C1272D',
+          50: '#fbeaea',
+          100: '#f3c4c6',
+          200: '#e89a9d',
+          300: '#dd7074',
+          400: '#d44b50',
+          500: '#C1272D',
+          600: '#a82227',
+          700: '#8e1d21',
+          800: '#75181b',
+          900: '#5b1315',
+        },
+        // Legacy/Extended Colors
+        'academica-gold': '#FDB913',
+        'cardinal': '#A4343A',
+        'pacific': '#1B8A9E',
+        'forest': '#2D5016',
+        'steel': '#5B6770',
+        // UPrinting-style green for CTAs
+        'cta-green': {
+          DEFAULT: '#008338',
+          hover: '#006e2f',
+        }
+      },
+      fontFamily: {
+        'display': ['"freight-display-pro"', 'Georgia', 'serif'],
+        'body': ['"avenir-next-lt-pro-condensed"', 'system-ui', 'sans-serif'],
+        'sans': ['"avenir-next-lt-pro-condensed"', 'system-ui', 'sans-serif'],
+      },
+    },
+  },
+  plugins: [],
+}

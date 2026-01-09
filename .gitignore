@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Environment files (contain secrets)
+.env
+server/.env
+
+# Build output
+client/dist/
+
+# Database (will be created fresh on server)
+server/data/*.sqlite
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
