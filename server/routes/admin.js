@@ -111,7 +111,15 @@ router.delete('/products/:id', (req, res) => {
 // Order management
 router.get('/orders', (req, res) => {
   try {
-    const orders = Order.getAll();
+    const { filter } = req.query;
+    let orders;
+
+    if (filter === 'mine') {
+      orders = Order.getByAssignedAdmin(req.user.id);
+    } else {
+      orders = Order.getAll();
+    }
+
     res.json({ orders });
   } catch (error) {
     console.error('Error fetching orders:', error);
@@ -127,7 +135,7 @@ router.put('/orders/:id', (req, res) => {
       return res.status(400).json({ error: 'Status is required' });
     }
 
-    const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+    const validStatuses = ['new', 'waiting_feedback', 'in_progress', 'on_hold', 'waiting_signoff', 'sent_to_print', 'completed'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
@@ -141,6 +149,80 @@ router.put('/orders/:id', (req, res) => {
   } catch (error) {
     console.error('Error updating order:', error);
     res.status(500).json({ error: 'Failed to update order' });
+  }
+});
+
+// Assign order to admin
+router.put('/orders/:id/assign', (req, res) => {
+  try {
+    const { adminId } = req.body;
+
+    // adminId can be null to unassign
+    if (adminId) {
+      const admin = User.findById(adminId);
+      if (!admin || admin.role !== 'admin') {
+        return res.status(400).json({ error: 'Invalid admin user' });
+      }
+    }
+
+    const order = Order.assignTo(req.params.id, adminId || null);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    res.json({ message: 'Order assigned', order });
+  } catch (error) {
+    console.error('Error assigning order:', error);
+    res.status(500).json({ error: 'Failed to assign order' });
+  }
+});
+
+// Order notes
+router.get('/orders/:id/notes', (req, res) => {
+  try {
+    const notes = Order.getNotes(req.params.id);
+    res.json({ notes });
+  } catch (error) {
+    console.error('Error fetching notes:', error);
+    res.status(500).json({ error: 'Failed to fetch notes' });
+  }
+});
+
+router.post('/orders/:id/notes', (req, res) => {
+  try {
+    const { note } = req.body;
+
+    if (!note || !note.trim()) {
+      return res.status(400).json({ error: 'Note is required' });
+    }
+
+    const newNote = Order.addNote(req.params.id, req.user.id, note.trim());
+    res.status(201).json({ message: 'Note added', note: newNote });
+  } catch (error) {
+    console.error('Error adding note:', error);
+    res.status(500).json({ error: 'Failed to add note' });
+  }
+});
+
+router.delete('/orders/notes/:noteId', (req, res) => {
+  try {
+    Order.deleteNote(req.params.noteId);
+    res.json({ message: 'Note deleted' });
+  } catch (error) {
+    console.error('Error deleting note:', error);
+    res.status(500).json({ error: 'Failed to delete note' });
+  }
+});
+
+// Get all admins (for assignment dropdown)
+router.get('/admins', (req, res) => {
+  try {
+    const users = User.getAll();
+    const admins = users.filter(u => u.role === 'admin' || u.userType === 'admin');
+    res.json({ admins: admins.map(a => ({ id: a.id, contactName: a.contactName, email: a.email })) });
+  } catch (error) {
+    console.error('Error fetching admins:', error);
+    res.status(500).json({ error: 'Failed to fetch admins' });
   }
 });
 
@@ -168,6 +250,79 @@ router.put('/users/:id/role', (req, res) => {
   } catch (error) {
     console.error('Error updating user role:', error);
     res.status(500).json({ error: 'Failed to update user role' });
+  }
+});
+
+router.put('/users/:id/userType', (req, res) => {
+  try {
+    const { userType } = req.body;
+
+    // Only super admins can change user types
+    if (req.user.userType !== 'superadmin') {
+      return res.status(403).json({ error: 'Only super admins can change user types' });
+    }
+
+    if (!userType || !['school_staff', 'academica_employee', 'admin', 'superadmin'].includes(userType)) {
+      return res.status(400).json({ error: 'Valid user type is required' });
+    }
+
+    User.updateUserType(req.params.id, userType);
+
+    // Sync role with user type - admin/superadmin userType gets admin role
+    const newRole = (userType === 'admin' || userType === 'superadmin') ? 'admin' : 'user';
+    User.updateRole(req.params.id, newRole);
+
+    res.json({ message: 'User type updated' });
+  } catch (error) {
+    console.error('Error updating user type:', error);
+    res.status(500).json({ error: 'Failed to update user type' });
+  }
+});
+
+// Create a new user (admin only)
+router.post('/users', async (req, res) => {
+  try {
+    const { email, password, userType, contactName, positionTitle, department, schoolName, principalName, phone } = req.body;
+
+    if (!email || !password || !contactName) {
+      return res.status(400).json({ error: 'Email, password, and contact name are required' });
+    }
+
+    // Check if user already exists
+    const existing = User.findByEmail(email);
+    if (existing) {
+      return res.status(400).json({ error: 'A user with this email already exists' });
+    }
+
+    const validUserTypes = ['school_staff', 'academica_employee', 'admin', 'superadmin'];
+    const finalUserType = validUserTypes.includes(userType) ? userType : 'school_staff';
+
+    // Only superadmins can create admin/superadmin users
+    if ((finalUserType === 'admin' || finalUserType === 'superadmin') && req.user.userType !== 'superadmin') {
+      return res.status(403).json({ error: 'Only super admins can create admin users' });
+    }
+
+    const user = await User.create({
+      email,
+      password,
+      userType: finalUserType,
+      contactName,
+      positionTitle,
+      department,
+      schoolName,
+      principalName,
+      phone
+    });
+
+    // Set role based on userType
+    if (finalUserType === 'admin' || finalUserType === 'superadmin') {
+      User.updateRole(user.id, 'admin');
+    }
+
+    res.status(201).json({ message: 'User created successfully', user });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({ error: 'Failed to create user' });
   }
 });
 

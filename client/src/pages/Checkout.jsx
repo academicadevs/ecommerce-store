@@ -10,11 +10,21 @@ export default function Checkout() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const isAdmin = user?.userType === 'admin' || user?.userType === 'superadmin' || user?.role === 'admin';
+  const baseUserType = user?.userType || 'school_staff';
+
+  // Admin can switch between ordering as school staff or academica employee
+  // Default to school_staff for admins since that's most common
+  const [orderingAs, setOrderingAs] = useState(isAdmin ? 'school_staff' : baseUserType);
+  const isAcademicaEmployee = isAdmin ? orderingAs === 'academica_employee' : baseUserType === 'academica_employee';
+
   const [formData, setFormData] = useState({
     schoolName: user?.schoolName || '',
     contactName: user?.contactName || '',
-    positionTitle: '',
-    principalName: '',
+    positionTitle: user?.positionTitle || '',
+    department: user?.department || '',
+    principalName: user?.principalName || '',
     email: user?.email || '',
     phone: user?.phone || '',
     notes: '',
@@ -35,10 +45,13 @@ export default function Checkout() {
         shippingInfo: {
           schoolName: formData.schoolName,
           contactName: formData.contactName,
-          positionTitle: formData.positionTitle,
+          positionTitle: isAcademicaEmployee ? formData.department : formData.positionTitle,
           principalName: formData.principalName,
           email: formData.email,
           phone: formData.phone,
+          orderedBy: isAcademicaEmployee ? 'academica_employee' : 'school_staff',
+          department: isAcademicaEmployee ? formData.department : null,
+          isAdminOrder: isAdmin,
         },
         notes: formData.notes,
       });
@@ -90,13 +103,38 @@ export default function Checkout() {
                 <svg className="w-6 h-6 text-academica-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
-                School Information
+                {isAcademicaEmployee ? 'Order Information' : 'School Information'}
               </h2>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Admin Role Selector */}
+              {isAdmin && (
+                <div className="mb-6">
+                  <label htmlFor="orderingAs" className="block text-sm font-medium text-gray-700 mb-2">
+                    Ordering on behalf of:
+                  </label>
+                  <select
+                    id="orderingAs"
+                    value={orderingAs}
+                    onChange={(e) => setOrderingAs(e.target.value)}
+                    className="input"
+                  >
+                    <option value="school_staff">School Staff Member</option>
+                    <option value="academica_employee">Academica Employee</option>
+                  </select>
+                </div>
+              )}
+
+              {isAcademicaEmployee && !isAdmin && (
+                <div className="bg-academica-blue-50 rounded-lg p-3 mb-4 text-sm text-academica-blue">
+                  Ordering as Academica Employee ({user?.department || 'Corporate'})
+                </div>
+              )}
+
+              <form id="checkout-form" onSubmit={handleSubmit} className="space-y-5">
+                {/* School to order for (required for all) */}
                 <div>
                   <label htmlFor="schoolName" className="block text-sm font-medium text-gray-700 mb-1">
-                    School Name *
+                    {isAcademicaEmployee ? 'School Ordering For *' : 'School Name *'}
                   </label>
                   <input
                     type="text"
@@ -106,7 +144,24 @@ export default function Checkout() {
                     onChange={handleChange}
                     required
                     className="input"
-                    placeholder="Academica Charter School"
+                    placeholder={isAcademicaEmployee ? 'Enter school name this order is for' : 'Academica Charter School'}
+                  />
+                </div>
+
+                {/* Principal's Name (required for all orders) */}
+                <div>
+                  <label htmlFor="principalName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Principal's Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="principalName"
+                    name="principalName"
+                    value={formData.principalName}
+                    onChange={handleChange}
+                    required
+                    className="input"
+                    placeholder="Dr. Jane Smith"
                   />
                 </div>
 
@@ -127,35 +182,19 @@ export default function Checkout() {
                   </div>
                   <div>
                     <label htmlFor="positionTitle" className="block text-sm font-medium text-gray-700 mb-1">
-                      Your Position/Title *
+                      {isAcademicaEmployee ? 'Department *' : 'Your Position/Title *'}
                     </label>
                     <input
                       type="text"
-                      id="positionTitle"
-                      name="positionTitle"
-                      value={formData.positionTitle}
+                      id={isAcademicaEmployee ? 'department' : 'positionTitle'}
+                      name={isAcademicaEmployee ? 'department' : 'positionTitle'}
+                      value={isAcademicaEmployee ? formData.department : formData.positionTitle}
                       onChange={handleChange}
                       required
                       className="input"
-                      placeholder="Marketing Coordinator"
+                      placeholder={isAcademicaEmployee ? 'Marketing' : 'Marketing Coordinator'}
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label htmlFor="principalName" className="block text-sm font-medium text-gray-700 mb-1">
-                    Principal's Name *
-                  </label>
-                  <input
-                    type="text"
-                    id="principalName"
-                    name="principalName"
-                    value={formData.principalName}
-                    onChange={handleChange}
-                    required
-                    className="input"
-                    placeholder="Dr. Jane Smith"
-                  />
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">
@@ -204,24 +243,7 @@ export default function Checkout() {
                   />
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full btn btn-primary py-3 text-lg mt-6"
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center">
-                      <svg className="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Submitting Order...
-                    </span>
-                  ) : (
-                    'Submit Order Request'
-                  )}
-                </button>
-              </form>
+                </form>
             </div>
           </div>
 
@@ -265,6 +287,25 @@ export default function Checkout() {
                   </div>
                 </div>
               </div>
+
+              <button
+                type="submit"
+                form="checkout-form"
+                disabled={loading}
+                className="w-full btn btn-primary py-3 text-lg mt-6"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Submitting Order...
+                  </span>
+                ) : (
+                  'Submit Order Request'
+                )}
+              </button>
 
               <Link to="/cart" className="block text-center text-academica-blue hover:text-academica-blue-600 mt-4 font-medium">
                 ← Back to Cart

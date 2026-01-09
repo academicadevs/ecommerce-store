@@ -26,8 +26,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(formData.email, formData.password);
-      navigate(from, { replace: true });
+      const user = await login(formData.email, formData.password);
+      if (user.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/products', { replace: true });
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to log in. Please try again.');
     } finally {
@@ -112,12 +116,6 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Demo credentials hint */}
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-600 text-center">
-            <strong>Admin Demo:</strong> admin@example.com / admin123
-          </p>
-        </div>
       </div>
     </div>
   );

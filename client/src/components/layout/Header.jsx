@@ -53,7 +53,7 @@ export default function Header() {
               {isAuthenticated ? (
                 <>
                   <span className="hidden sm:inline text-white/70">
-                    Welcome, {user?.schoolName || user?.contactName}
+                    Welcome, {user?.contactName?.split(' ')[0] || user?.schoolName}
                   </span>
                   <button onClick={handleLogout} className="hover:text-academica-gold transition-colors">
                     Sign Out
@@ -115,15 +115,26 @@ export default function Header() {
               )}
 
               {isAuthenticated && (
-                <Link
-                  to="/orders"
-                  className="hidden sm:flex items-center gap-1 text-charcoal hover:text-academica-blue transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  <span className="text-sm font-medium">Orders</span>
-                </Link>
+                <>
+                  <Link
+                    to="/profile"
+                    className="hidden sm:flex items-center gap-1 text-charcoal hover:text-academica-blue transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span className="text-sm font-medium">Profile</span>
+                  </Link>
+                  <Link
+                    to="/orders"
+                    className="hidden sm:flex items-center gap-1 text-charcoal hover:text-academica-blue transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <span className="text-sm font-medium">Orders</span>
+                  </Link>
+                </>
               )}
 
               {/* Cart */}
@@ -252,6 +263,13 @@ export default function Header() {
             {/* Mobile Auth Links */}
             {isAuthenticated ? (
               <div className="py-2 border-t border-gray-100 space-y-2">
+                <Link
+                  to="/profile"
+                  className="block text-charcoal py-1"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  My Profile
+                </Link>
                 <Link
                   to="/orders"
                   className="block text-charcoal py-1"

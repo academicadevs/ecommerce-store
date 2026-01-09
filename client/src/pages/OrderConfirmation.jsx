@@ -64,7 +64,7 @@ export default function OrderConfirmation() {
           <div className="flex justify-between items-center">
             <div>
               <p className="text-primary-100 text-sm">Order Number</p>
-              <p className="font-mono font-bold text-lg">#{order.id.slice(0, 8).toUpperCase()}</p>
+              <p className="font-mono font-bold text-lg">{order.orderNumber || `#${order.id.slice(0, 8).toUpperCase()}`}</p>
             </div>
             <div className="text-right">
               <p className="text-primary-100 text-sm">Order Date</p>

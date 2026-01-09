@@ -4,11 +4,23 @@ import { ordersAPI } from '../services/api';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
 const statusColors = {
-  pending: 'badge-warning',
-  processing: 'badge-info',
-  shipped: 'badge-info',
-  delivered: 'badge-success',
-  cancelled: 'badge-danger',
+  new: 'badge-info',
+  waiting_feedback: 'badge-warning',
+  in_progress: 'badge-info',
+  on_hold: 'badge-warning',
+  waiting_signoff: 'badge-info',
+  sent_to_print: 'badge-info',
+  completed: 'badge-success',
+};
+
+const statusLabels = {
+  new: 'New',
+  waiting_feedback: 'Waiting for Feedback',
+  in_progress: 'In Progress',
+  on_hold: 'On Hold',
+  waiting_signoff: 'Waiting for Sign Off',
+  sent_to_print: 'Sent to Print',
+  completed: 'Completed',
 };
 
 export default function OrderHistory() {
@@ -66,10 +78,10 @@ export default function OrderHistory() {
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                       <span className="font-mono font-bold text-gray-900">
-                        #{order.id.slice(0, 8).toUpperCase()}
+                        {order.orderNumber || `#${order.id.slice(0, 8).toUpperCase()}`}
                       </span>
-                      <span className={`badge ${statusColors[order.status] || 'badge-info'} capitalize`}>
-                        {order.status}
+                      <span className={`badge ${statusColors[order.status] || 'badge-info'}`}>
+                        {statusLabels[order.status] || order.status}
                       </span>
                     </div>
                     <p className="text-sm text-gray-500">

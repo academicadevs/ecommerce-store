@@ -57,6 +57,19 @@ export function CartProvider({ children }) {
     }
   };
 
+  const updateCartItem = async (itemId, quantity, selectedOptions) => {
+    try {
+      setLoading(true);
+      const response = await cartAPI.updateItem(itemId, quantity, selectedOptions);
+      setItems(response.data.items);
+    } catch (error) {
+      console.error('Failed to update cart item:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const removeFromCart = async (itemId) => {
     try {
       setLoading(true);
@@ -91,6 +104,7 @@ export function CartProvider({ children }) {
     itemCount,
     addToCart,
     updateQuantity,
+    updateCartItem,
     removeFromCart,
     clearCart,
     fetchCart,

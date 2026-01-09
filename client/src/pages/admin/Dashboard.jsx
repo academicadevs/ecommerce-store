@@ -3,6 +3,26 @@ import { Link } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
+const statusLabels = {
+  new: 'New',
+  waiting_feedback: 'Waiting for Feedback',
+  in_progress: 'In Progress',
+  on_hold: 'On Hold',
+  waiting_signoff: 'Waiting for Sign Off',
+  sent_to_print: 'Sent to Print',
+  completed: 'Completed',
+};
+
+const statusBadgeClass = {
+  new: 'badge-info',
+  waiting_feedback: 'badge-warning',
+  in_progress: 'badge-info',
+  on_hold: 'badge-warning',
+  waiting_signoff: 'badge-info',
+  sent_to_print: 'badge-info',
+  completed: 'badge-success',
+};
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -173,18 +193,14 @@ export default function AdminDashboard() {
                 {stats.recentOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="font-mono text-sm">#{order.id.slice(0, 8).toUpperCase()}</span>
+                      <span className="font-mono text-sm">{order.orderNumber || `#${order.id.slice(0, 8).toUpperCase()}`}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm text-gray-900">{order.schoolName}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`badge capitalize ${
-                        order.status === 'pending' ? 'badge-warning' :
-                        order.status === 'delivered' ? 'badge-success' :
-                        order.status === 'cancelled' ? 'badge-danger' : 'badge-info'
-                      }`}>
-                        {order.status}
+                      <span className={`badge ${statusBadgeClass[order.status] || 'badge-info'}`}>
+                        {statusLabels[order.status] || order.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

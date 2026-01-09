@@ -8,13 +8,18 @@ const router = express.Router();
 // Register a new user
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, schoolName, contactName, phone, address } = req.body;
+    const { email, password, userType, contactName, positionTitle, department, schoolName, principalName, phone, address } = req.body;
 
     // Validation
-    if (!email || !password || !schoolName || !contactName) {
+    if (!email || !password || !contactName || !userType) {
       return res.status(400).json({
-        error: 'Email, password, school name, and contact name are required'
+        error: 'Email, password, name, and account type are required'
       });
+    }
+
+    // Validate based on user type
+    if (userType === 'school_staff' && !schoolName) {
+      return res.status(400).json({ error: 'School name is required for school staff' });
     }
 
     if (password.length < 6) {
@@ -28,7 +33,18 @@ router.post('/register', async (req, res) => {
     }
 
     // Create user
-    const user = await User.create({ email, password, schoolName, contactName, phone, address });
+    const user = await User.create({
+      email,
+      password,
+      userType,
+      contactName,
+      positionTitle,
+      department,
+      schoolName,
+      principalName,
+      phone,
+      address
+    });
 
     // Generate token
     const token = jwt.sign(
@@ -43,8 +59,12 @@ router.post('/register', async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        schoolName: user.schoolName,
+        userType: user.userType,
         contactName: user.contactName,
+        positionTitle: user.positionTitle,
+        department: user.department,
+        schoolName: user.schoolName,
+        principalName: user.principalName,
         phone: user.phone,
         address: user.address,
         role: user.role
@@ -90,8 +110,12 @@ router.post('/login', async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        schoolName: user.schoolName,
+        userType: user.userType || 'school_staff',
         contactName: user.contactName,
+        positionTitle: user.positionTitle,
+        department: user.department,
+        schoolName: user.schoolName,
+        principalName: user.principalName,
         phone: user.phone,
         address: user.address,
         role: user.role
@@ -112,15 +136,15 @@ router.get('/me', authenticate, (req, res) => {
 // Update profile
 router.put('/profile', authenticate, async (req, res) => {
   try {
-    const { schoolName, contactName, phone, address } = req.body;
+    const { contactName, positionTitle, department, schoolName, principalName, phone, address } = req.body;
     const userId = req.user.id;
 
     const stmt = (await import('../utils/database.js')).default.prepare(`
-      UPDATE users SET schoolName = ?, contactName = ?, phone = ?, address = ?
+      UPDATE users SET contactName = ?, positionTitle = ?, department = ?, schoolName = ?, principalName = ?, phone = ?, address = ?
       WHERE id = ?
     `);
 
-    stmt.run(schoolName, contactName, phone, address, userId);
+    stmt.run(contactName, positionTitle, department, schoolName, principalName, phone, address, userId);
 
     const updatedUser = User.findById(userId);
     const { password, ...user } = updatedUser;

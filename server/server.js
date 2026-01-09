@@ -71,7 +71,7 @@ async function start() {
     Product.seedProducts();
 
     // Create default admin user if none exists
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+    const adminEmail = process.env.ADMIN_EMAIL || 'seth.clark@academicanv.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
     await User.createAdmin({ email: adminEmail, password: adminPassword });
     console.log(`Admin user created/verified: ${adminEmail}`);

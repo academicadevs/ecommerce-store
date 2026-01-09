@@ -248,7 +248,7 @@ export default function Home() {
                 <>
                   <Link
                     to="/register"
-                    className="inline-flex items-center justify-center gap-2 bg-cta-green hover:bg-cta-green-hover text-white font-semibold px-8 py-4 rounded-lg transition-all"
+                    className="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-100 text-academica-blue font-semibold px-8 py-4 rounded-lg transition-all"
                   >
                     Create Your Account
                   </Link>

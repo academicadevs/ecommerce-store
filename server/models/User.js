@@ -3,18 +3,30 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 
 export const User = {
-  create: async ({ email, password, schoolName, contactName, phone, address }) => {
+  create: async ({ email, password, userType, contactName, positionTitle, department, schoolName, principalName, phone, address }) => {
     const id = uuidv4();
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const stmt = db.prepare(`
-      INSERT INTO users (id, email, password, schoolName, contactName, phone, address)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (id, email, password, userType, contactName, positionTitle, department, schoolName, principalName, phone, address)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    stmt.run(id, email, hashedPassword, schoolName, contactName, phone || null, address || null);
+    stmt.run(
+      id,
+      email,
+      hashedPassword,
+      userType || 'school_staff',
+      contactName,
+      positionTitle || null,
+      department || null,
+      schoolName || 'N/A',
+      principalName || null,
+      phone || null,
+      address || null
+    );
 
-    return { id, email, schoolName, contactName, phone, address, role: 'user' };
+    return { id, email, userType: userType || 'school_staff', contactName, positionTitle, department, schoolName, principalName, phone, address, role: 'user' };
   },
 
   findByEmail: (email) => {
@@ -32,13 +44,18 @@ export const User = {
   },
 
   getAll: () => {
-    const stmt = db.prepare('SELECT id, email, schoolName, contactName, phone, address, role, createdAt FROM users ORDER BY createdAt DESC');
+    const stmt = db.prepare('SELECT id, email, userType, contactName, positionTitle, department, schoolName, principalName, phone, address, role, createdAt FROM users ORDER BY createdAt DESC');
     return stmt.all();
   },
 
   updateRole: (id, role) => {
     const stmt = db.prepare('UPDATE users SET role = ? WHERE id = ?');
     stmt.run(role, id);
+  },
+
+  updateUserType: (id, userType) => {
+    const stmt = db.prepare('UPDATE users SET userType = ? WHERE id = ?');
+    stmt.run(userType, id);
   },
 
   count: () => {
@@ -49,8 +66,12 @@ export const User = {
   createAdmin: async ({ email, password }) => {
     const existing = User.findByEmail(email);
     if (existing) {
+      // Ensure the default admin is always a superadmin
       if (existing.role !== 'admin') {
         User.updateRole(existing.id, 'admin');
+      }
+      if (existing.userType !== 'superadmin') {
+        User.updateUserType(existing.id, 'superadmin');
       }
       return existing;
     }
@@ -59,12 +80,12 @@ export const User = {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const stmt = db.prepare(`
-      INSERT INTO users (id, email, password, schoolName, contactName, role)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO users (id, email, password, userType, schoolName, contactName, role)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
-    stmt.run(id, email, hashedPassword, 'Admin', 'Administrator', 'admin');
+    stmt.run(id, email, hashedPassword, 'superadmin', 'Admin', 'Super Administrator', 'admin');
 
-    return { id, email, schoolName: 'Admin', contactName: 'Administrator', role: 'admin' };
+    return { id, email, userType: 'superadmin', schoolName: 'Admin', contactName: 'Super Administrator', role: 'admin' };
   }
 };

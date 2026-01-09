@@ -72,11 +72,19 @@ export const adminAPI = {
   updateProduct: (id, data) => api.put(`/admin/products/${id}`, data),
   deleteProduct: (id) => api.delete(`/admin/products/${id}`),
   // Orders
-  getOrders: () => api.get('/admin/orders'),
+  getOrders: (filter) => api.get('/admin/orders', { params: { filter } }),
   updateOrderStatus: (id, status) => api.put(`/admin/orders/${id}`, { status }),
+  assignOrder: (id, adminId) => api.put(`/admin/orders/${id}/assign`, { adminId }),
+  getOrderNotes: (id) => api.get(`/admin/orders/${id}/notes`),
+  addOrderNote: (id, note) => api.post(`/admin/orders/${id}/notes`, { note }),
+  deleteOrderNote: (noteId) => api.delete(`/admin/orders/notes/${noteId}`),
+  // Admins
+  getAdmins: () => api.get('/admin/admins'),
   // Users
   getUsers: () => api.get('/admin/users'),
+  createUser: (data) => api.post('/admin/users', data),
   updateUserRole: (id, role) => api.put(`/admin/users/${id}/role`, { role }),
+  updateUserType: (id, userType) => api.put(`/admin/users/${id}/userType`, { userType }),
   getUserOrders: (userId) => api.get(`/admin/users/${userId}/orders`),
 };
 

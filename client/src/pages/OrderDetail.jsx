@@ -4,11 +4,23 @@ import { ordersAPI } from '../services/api';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
 const statusColors = {
-  pending: 'badge-warning',
-  processing: 'badge-info',
-  shipped: 'badge-info',
-  delivered: 'badge-success',
-  cancelled: 'badge-danger',
+  new: 'badge-info',
+  waiting_feedback: 'badge-warning',
+  in_progress: 'badge-info',
+  on_hold: 'badge-warning',
+  waiting_signoff: 'badge-info',
+  sent_to_print: 'badge-info',
+  completed: 'badge-success',
+};
+
+const statusLabels = {
+  new: 'New',
+  waiting_feedback: 'Waiting for Feedback',
+  in_progress: 'In Progress',
+  on_hold: 'On Hold',
+  waiting_signoff: 'Waiting for Sign Off',
+  sent_to_print: 'Sent to Print',
+  completed: 'Completed',
 };
 
 export default function OrderDetail() {
@@ -66,7 +78,7 @@ export default function OrderDetail() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
               <h1 className="text-xl font-bold text-gray-900">
-                Order #{order.id.slice(0, 8).toUpperCase()}
+                Order {order.orderNumber || `#${order.id.slice(0, 8).toUpperCase()}`}
               </h1>
               <p className="text-sm text-gray-500">
                 Placed on {new Date(order.createdAt).toLocaleDateString('en-US', {
@@ -78,8 +90,8 @@ export default function OrderDetail() {
                 })}
               </p>
             </div>
-            <span className={`badge ${statusColors[order.status] || 'badge-info'} capitalize text-sm px-3 py-1`}>
-              {order.status}
+            <span className={`badge ${statusColors[order.status] || 'badge-info'} text-sm px-3 py-1`}>
+              {statusLabels[order.status] || order.status}
             </span>
           </div>
         </div>
