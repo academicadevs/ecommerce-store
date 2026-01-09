@@ -85,6 +85,9 @@ export default function Login() {
                 className="input"
                 placeholder="Enter your password"
               />
+              <p className="text-xs text-gray-500 mt-2">
+                <span className="font-medium">School Staff &amp; Academica Employees:</span> Your password is your middle name.
+              </p>
             </div>
 
             <button

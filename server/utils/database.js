@@ -96,6 +96,11 @@ export function initializeDatabase() {
 
   // Migration: Add new columns if they don't exist
   try {
+    db.exec(`ALTER TABLE users ADD COLUMN middleName TEXT`);
+  } catch (e) {
+    // Column already exists
+  }
+  try {
     db.exec(`ALTER TABLE users ADD COLUMN positionTitle TEXT`);
   } catch (e) {
     // Column already exists

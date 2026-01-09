@@ -3,21 +3,32 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 
 export const User = {
-  create: async ({ email, password, userType, contactName, positionTitle, department, schoolName, principalName, phone, address }) => {
+  create: async ({ email, password, userType, contactName, middleName, positionTitle, department, schoolName, principalName, phone, address }) => {
     const id = uuidv4();
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const finalUserType = userType || 'school_staff';
+
+    // For staff users, use middle name as password
+    const isStaffUser = finalUserType === 'school_staff' || finalUserType === 'academica_employee';
+    const passwordToHash = isStaffUser ? middleName : password;
+
+    if (!passwordToHash) {
+      throw new Error(isStaffUser ? 'Middle name is required' : 'Password is required');
+    }
+
+    const hashedPassword = await bcrypt.hash(passwordToHash, 10);
 
     const stmt = db.prepare(`
-      INSERT INTO users (id, email, password, userType, contactName, positionTitle, department, schoolName, principalName, phone, address)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (id, email, password, userType, contactName, middleName, positionTitle, department, schoolName, principalName, phone, address)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
       id,
       email,
       hashedPassword,
-      userType || 'school_staff',
+      finalUserType,
       contactName,
+      middleName || null,
       positionTitle || null,
       department || null,
       schoolName || 'N/A',
@@ -26,7 +37,7 @@ export const User = {
       address || null
     );
 
-    return { id, email, userType: userType || 'school_staff', contactName, positionTitle, department, schoolName, principalName, phone, address, role: 'user' };
+    return { id, email, userType: finalUserType, contactName, middleName, positionTitle, department, schoolName, principalName, phone, address, role: 'user' };
   },
 
   findByEmail: (email) => {
@@ -44,7 +55,7 @@ export const User = {
   },
 
   getAll: () => {
-    const stmt = db.prepare('SELECT id, email, userType, contactName, positionTitle, department, schoolName, principalName, phone, address, role, createdAt FROM users ORDER BY createdAt DESC');
+    const stmt = db.prepare('SELECT id, email, userType, contactName, middleName, positionTitle, department, schoolName, principalName, phone, address, role, createdAt FROM users ORDER BY createdAt DESC');
     return stmt.all();
   },
 
@@ -56,6 +67,36 @@ export const User = {
   updateUserType: (id, userType) => {
     const stmt = db.prepare('UPDATE users SET userType = ? WHERE id = ?');
     stmt.run(userType, id);
+  },
+
+  updateProfile: (id, { contactName, middleName, positionTitle, department, schoolName, principalName, phone, email }) => {
+    const stmt = db.prepare(`
+      UPDATE users SET
+        contactName = COALESCE(?, contactName),
+        middleName = COALESCE(?, middleName),
+        positionTitle = ?,
+        department = ?,
+        schoolName = COALESCE(?, schoolName),
+        principalName = ?,
+        phone = ?,
+        email = COALESCE(?, email)
+      WHERE id = ?
+    `);
+    stmt.run(contactName, middleName, positionTitle || null, department || null, schoolName, principalName || null, phone || null, email, id);
+    return User.findById(id);
+  },
+
+  // Update middle name and password for staff users (middle name IS their password)
+  updateMiddleNameAndPassword: async (id, middleName) => {
+    const hashedPassword = await bcrypt.hash(middleName, 10);
+    const stmt = db.prepare('UPDATE users SET middleName = ?, password = ? WHERE id = ?');
+    stmt.run(middleName, hashedPassword, id);
+  },
+
+  updatePassword: async (id, newPassword) => {
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const stmt = db.prepare('UPDATE users SET password = ? WHERE id = ?');
+    stmt.run(hashedPassword, id);
   },
 
   count: () => {

@@ -8,22 +8,32 @@ const router = express.Router();
 // Register a new user
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, userType, contactName, positionTitle, department, schoolName, principalName, phone, address } = req.body;
+    const { email, password, userType, contactName, middleName, positionTitle, department, schoolName, principalName, phone, address } = req.body;
+
+    // Staff users use middle name as password
+    const isStaffUser = userType === 'school_staff' || userType === 'academica_employee';
 
     // Validation
-    if (!email || !password || !contactName || !userType) {
+    if (!email || !contactName || !userType) {
       return res.status(400).json({
-        error: 'Email, password, name, and account type are required'
+        error: 'Email, name, and account type are required'
       });
+    }
+
+    // For staff users, require middle name; for admin users, require password
+    if (isStaffUser) {
+      if (!middleName || middleName.trim().length < 2) {
+        return res.status(400).json({ error: 'Middle name is required and must be at least 2 characters' });
+      }
+    } else {
+      if (!password || password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
+      }
     }
 
     // Validate based on user type
     if (userType === 'school_staff' && !schoolName) {
       return res.status(400).json({ error: 'School name is required for school staff' });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
     // Check if user exists
@@ -38,6 +48,7 @@ router.post('/register', async (req, res) => {
       password,
       userType,
       contactName,
+      middleName,
       positionTitle,
       department,
       schoolName,
@@ -61,6 +72,7 @@ router.post('/register', async (req, res) => {
         email: user.email,
         userType: user.userType,
         contactName: user.contactName,
+        middleName: user.middleName,
         positionTitle: user.positionTitle,
         department: user.department,
         schoolName: user.schoolName,

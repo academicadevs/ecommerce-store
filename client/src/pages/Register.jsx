@@ -32,8 +32,7 @@ export default function Register() {
   const [formData, setFormData] = useState({
     userType: '',
     email: '',
-    password: '',
-    confirmPassword: '',
+    middleName: '',
     contactName: '',
     positionTitle: '',
     // School staff fields
@@ -62,13 +61,8 @@ export default function Register() {
     e.preventDefault();
     setError('');
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (!formData.middleName || formData.middleName.trim().length < 2) {
+      setError('Middle name is required and must be at least 2 characters');
       return;
     }
 
@@ -78,7 +72,7 @@ export default function Register() {
       await register({
         userType: formData.userType,
         email: formData.email,
-        password: formData.password,
+        middleName: formData.middleName.trim(),
         contactName: formData.contactName,
         positionTitle: formData.positionTitle,
         schoolName: formData.schoolName,
@@ -284,38 +278,34 @@ export default function Register() {
                   />
                 </div>
 
-                {/* Password */}
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                    Password *
-                  </label>
-                  <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                    className="input"
-                    placeholder="At least 6 characters"
-                  />
+                {/* Middle Name - Used as Password */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-blue-800">Your middle name is your password</p>
+                      <p className="text-xs text-blue-600 mt-1">When signing in, use your middle name as your password. This helps keep things simple and secure.</p>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Confirm Password */}
                 <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                    Confirm Password *
+                  <label htmlFor="middleName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Middle Name *
                   </label>
                   <input
-                    type="password"
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
+                    type="text"
+                    id="middleName"
+                    name="middleName"
+                    value={formData.middleName}
                     onChange={handleChange}
                     required
                     className="input"
-                    placeholder="Confirm your password"
+                    placeholder="Your middle name (this will be your password)"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Min 2 characters. Remember this - you'll use it to sign in.</p>
                 </div>
 
                 <button

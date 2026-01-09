@@ -56,6 +56,7 @@ export default function ManageUsers() {
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
+    middleName: '',
     contactName: '',
     userType: 'school_staff',
     schoolName: '',
@@ -64,6 +65,14 @@ export default function ManageUsers() {
     department: '',
     phone: '',
   });
+
+  // Edit user modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [editUser, setEditUser] = useState(null);
+  const [editPassword, setEditPassword] = useState('');
+  const [editConfirmPassword, setEditConfirmPassword] = useState('');
 
   const isSuperAdmin = currentUser?.userType === 'superadmin';
 
@@ -146,6 +155,7 @@ export default function ManageUsers() {
     setNewUser({
       email: '',
       password: '',
+      middleName: '',
       contactName: '',
       userType: 'school_staff',
       schoolName: '',
@@ -156,6 +166,9 @@ export default function ManageUsers() {
     });
     setAddError('');
   };
+
+  // Check if user type is staff (uses middle name as password)
+  const isStaffUserType = (userType) => userType === 'school_staff' || userType === 'academica_employee';
 
   const handleAddUser = async (e) => {
     e.preventDefault();
@@ -172,6 +185,84 @@ export default function ManageUsers() {
       setAddError(error.response?.data?.error || 'Failed to create user');
     } finally {
       setAddingUser(false);
+    }
+  };
+
+  const canEditUser = (user) => {
+    // Superadmins can edit everyone
+    if (isSuperAdmin) return true;
+    // Admins cannot edit superadmins
+    if (user.userType === 'superadmin') return false;
+    return true;
+  };
+
+  const handleOpenEditModal = (user) => {
+    setEditUser({
+      id: user.id,
+      email: user.email,
+      contactName: user.contactName,
+      userType: user.userType,
+      middleName: user.middleName || '',
+      schoolName: user.schoolName || '',
+      principalName: user.principalName || '',
+      positionTitle: user.positionTitle || '',
+      department: user.department || '',
+      phone: user.phone || '',
+    });
+    setEditPassword('');
+    setEditConfirmPassword('');
+    setEditError('');
+    setShowEditModal(true);
+  };
+
+  const handleEditUser = async (e) => {
+    e.preventDefault();
+    setEditError('');
+
+    const isStaff = isStaffUserType(editUser.userType);
+
+    // Validate password if provided (for admin/superadmin only)
+    if (!isStaff && editPassword) {
+      if (editPassword !== editConfirmPassword) {
+        setEditError('Passwords do not match');
+        return;
+      }
+      if (editPassword.length < 6) {
+        setEditError('Password must be at least 6 characters');
+        return;
+      }
+    }
+
+    setEditingUser(true);
+
+    try {
+      // Update profile (includes middleName for staff users)
+      await adminAPI.updateUser(editUser.id, {
+        email: editUser.email,
+        contactName: editUser.contactName,
+        middleName: isStaff ? editUser.middleName : undefined,
+        schoolName: editUser.schoolName,
+        principalName: editUser.principalName,
+        positionTitle: editUser.positionTitle,
+        department: editUser.department,
+        phone: editUser.phone,
+      });
+
+      // Update password if provided (for admin/superadmin only)
+      if (!isStaff && editPassword) {
+        await adminAPI.updateUserPassword(editUser.id, editPassword);
+      }
+
+      setShowEditModal(false);
+      setEditUser(null);
+      setEditPassword('');
+      setEditConfirmPassword('');
+      loadUsers();
+    } catch (error) {
+      console.error('Failed to update user:', error);
+      setEditError(error.response?.data?.error || 'Failed to update user');
+    } finally {
+      setEditingUser(false);
     }
   };
 
@@ -307,6 +398,18 @@ export default function ManageUsers() {
                   >
                     {selectedUser === user.id ? 'Hide Orders' : 'View Orders'}
                   </button>
+
+                  {canEditUser(user) && (
+                    <button
+                      onClick={() => handleOpenEditModal(user)}
+                      className="px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                      title="Edit User"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -443,6 +546,15 @@ export default function ManageUsers() {
                 </select>
               </div>
 
+              {/* Info box for staff users */}
+              {isStaffUserType(newUser.userType) && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-800">
+                    <span className="font-medium">Note:</span> Staff members use their middle name as their password.
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
@@ -455,18 +567,33 @@ export default function ManageUsers() {
                     placeholder="user@example.com"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-                  <input
-                    type="password"
-                    value={newUser.password}
-                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                    required
-                    minLength={6}
-                    className="input w-full"
-                    placeholder="Min 6 characters"
-                  />
-                </div>
+                {isStaffUserType(newUser.userType) ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name *</label>
+                    <input
+                      type="text"
+                      value={newUser.middleName}
+                      onChange={(e) => setNewUser({ ...newUser, middleName: e.target.value })}
+                      required
+                      minLength={2}
+                      className="input w-full"
+                      placeholder="Used as password"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+                    <input
+                      type="password"
+                      value={newUser.password}
+                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                      required
+                      minLength={6}
+                      className="input w-full"
+                      placeholder="Min 6 characters"
+                    />
+                  </div>
+                )}
               </div>
 
               <div>
@@ -560,6 +687,185 @@ export default function ManageUsers() {
           </div>
         </div>
       )}
+
+      {/* Edit User Modal */}
+      {showEditModal && editUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-charcoal">Edit User Profile</h2>
+              <button
+                onClick={() => { setShowEditModal(false); setEditUser(null); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleEditUser} className="p-6 space-y-4">
+              {editError && (
+                <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
+                  {editError}
+                </div>
+              )}
+
+              <div className="bg-gray-50 px-4 py-2 rounded-lg">
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${USER_TYPE_COLORS[editUser.userType] || USER_TYPE_COLORS.school_staff}`}>
+                  {USER_TYPE_LABELS[editUser.userType] || 'School Staff Member'}
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={editUser.email}
+                  onChange={(e) => setEditUser({ ...editUser, email: e.target.value })}
+                  required
+                  className="input w-full"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Name *</label>
+                <input
+                  type="text"
+                  value={editUser.contactName}
+                  onChange={(e) => setEditUser({ ...editUser, contactName: e.target.value })}
+                  required
+                  className="input w-full"
+                />
+              </div>
+
+              {(editUser.userType === 'school_staff' || editUser.userType === 'admin' || editUser.userType === 'superadmin') && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">School Name</label>
+                    <input
+                      type="text"
+                      value={editUser.schoolName}
+                      onChange={(e) => setEditUser({ ...editUser, schoolName: e.target.value })}
+                      className="input w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Principal's Name</label>
+                    <input
+                      type="text"
+                      value={editUser.principalName}
+                      onChange={(e) => setEditUser({ ...editUser, principalName: e.target.value })}
+                      className="input w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Position/Title</label>
+                    <input
+                      type="text"
+                      value={editUser.positionTitle}
+                      onChange={(e) => setEditUser({ ...editUser, positionTitle: e.target.value })}
+                      className="input w-full"
+                    />
+                  </div>
+                </>
+              )}
+
+              {editUser.userType === 'academica_employee' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                  <input
+                    type="text"
+                    value={editUser.department}
+                    onChange={(e) => setEditUser({ ...editUser, department: e.target.value })}
+                    className="input w-full"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <input
+                  type="tel"
+                  value={editUser.phone}
+                  onChange={(e) => setEditUser({ ...editUser, phone: e.target.value })}
+                  className="input w-full"
+                />
+              </div>
+
+              {/* Middle Name Section (for staff users) */}
+              {isStaffUserType(editUser.userType) && (
+                <div className="pt-4 border-t border-gray-200">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                    <p className="text-sm text-blue-800">
+                      <span className="font-medium">Note:</span> This user's password is their middle name.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name (Password)</label>
+                    <input
+                      type="text"
+                      value={editUser.middleName}
+                      onChange={(e) => setEditUser({ ...editUser, middleName: e.target.value })}
+                      className="input w-full"
+                      placeholder="User's middle name"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Changing this will update the user's password</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Password Section (for admin/superadmin users - only visible to superadmins) */}
+              {!isStaffUserType(editUser.userType) && isSuperAdmin && (
+                <div className="pt-4 border-t border-gray-200">
+                  <p className="text-sm font-medium text-gray-700 mb-3">Change Password</p>
+                  <p className="text-xs text-gray-500 mb-3">Leave blank to keep current password</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                      <input
+                        type="password"
+                        value={editPassword}
+                        onChange={(e) => setEditPassword(e.target.value)}
+                        className="input w-full"
+                        placeholder="Min 6 characters"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                      <input
+                        type="password"
+                        value={editConfirmPassword}
+                        onChange={(e) => setEditConfirmPassword(e.target.value)}
+                        className="input w-full"
+                        placeholder="Confirm password"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => { setShowEditModal(false); setEditUser(null); }}
+                  className="px-4 py-2 text-gray-700 hover:text-gray-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editingUser}
+                  className="btn btn-primary"
+                >
+                  {editingUser ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

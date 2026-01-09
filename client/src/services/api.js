@@ -83,6 +83,8 @@ export const adminAPI = {
   // Users
   getUsers: () => api.get('/admin/users'),
   createUser: (data) => api.post('/admin/users', data),
+  updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
+  updateUserPassword: (id, password) => api.put(`/admin/users/${id}/password`, { password }),
   updateUserRole: (id, role) => api.put(`/admin/users/${id}/role`, { role }),
   updateUserType: (id, userType) => api.put(`/admin/users/${id}/userType`, { userType }),
   getUserOrders: (userId) => api.get(`/admin/users/${userId}/orders`),
