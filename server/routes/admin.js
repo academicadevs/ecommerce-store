@@ -3,6 +3,7 @@ import { Product } from '../models/Product.js';
 import { Order } from '../models/Order.js';
 import { User } from '../models/User.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
+import { seedAll } from '../scripts/seedAll.js';
 
 const router = express.Router();
 
@@ -435,6 +436,23 @@ router.get('/users/:id/orders', (req, res) => {
   } catch (error) {
     console.error('Error fetching user orders:', error);
     res.status(500).json({ error: 'Failed to fetch user orders' });
+  }
+});
+
+// Seed dummy data (superadmin only, one-time use)
+router.post('/seed', async (req, res) => {
+  try {
+    // Only superadmins can seed data
+    if (req.user.userType !== 'superadmin') {
+      return res.status(403).json({ error: 'Only super admins can seed data' });
+    }
+
+    console.log('Manual seed triggered by:', req.user.email);
+    await seedAll();
+    res.json({ message: 'Database seeded successfully' });
+  } catch (error) {
+    console.error('Error seeding database:', error);
+    res.status(500).json({ error: 'Failed to seed database' });
   }
 });
 

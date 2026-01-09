@@ -2,12 +2,12 @@ import db from '../utils/database.js';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 
-// Dummy Users
+// Dummy Users (staff users use middleName as password)
 const dummyUsers = [
   // School Staff (6 users)
   {
     email: 'maria.gonzalez@somersetacademy.edu',
-    password: 'password123',
+    middleName: 'Elena',
     userType: 'school_staff',
     contactName: 'Maria Gonzalez',
     positionTitle: 'Marketing Coordinator',
@@ -17,7 +17,7 @@ const dummyUsers = [
   },
   {
     email: 'james.wilson@doralacademy.edu',
-    password: 'password123',
+    middleName: 'Robert',
     userType: 'school_staff',
     contactName: 'James Wilson',
     positionTitle: 'Assistant Principal',
@@ -27,7 +27,7 @@ const dummyUsers = [
   },
   {
     email: 'sarah.johnson@miamiarts.edu',
-    password: 'password123',
+    middleName: 'Anne',
     userType: 'school_staff',
     contactName: 'Sarah Johnson',
     positionTitle: 'Office Manager',
@@ -37,7 +37,7 @@ const dummyUsers = [
   },
   {
     email: 'david.lee@pinecrestprep.edu',
-    password: 'password123',
+    middleName: 'Michael',
     userType: 'school_staff',
     contactName: 'David Lee',
     positionTitle: 'Events Coordinator',
@@ -47,7 +47,7 @@ const dummyUsers = [
   },
   {
     email: 'jennifer.brown@keysgatecharter.edu',
-    password: 'password123',
+    middleName: 'Lynn',
     userType: 'school_staff',
     contactName: 'Jennifer Brown',
     positionTitle: 'Administrative Assistant',
@@ -57,7 +57,7 @@ const dummyUsers = [
   },
   {
     email: 'michael.davis@somersetsilver.edu',
-    password: 'password123',
+    middleName: 'Anthony',
     userType: 'school_staff',
     contactName: 'Michael Davis',
     positionTitle: 'Dean of Students',
@@ -68,7 +68,7 @@ const dummyUsers = [
   // Academica Employees (4 users)
   {
     email: 'emily.martinez@academica.com',
-    password: 'password123',
+    middleName: 'Rose',
     userType: 'academica_employee',
     contactName: 'Emily Martinez',
     department: 'Marketing',
@@ -77,7 +77,7 @@ const dummyUsers = [
   },
   {
     email: 'robert.taylor@academica.com',
-    password: 'password123',
+    middleName: 'James',
     userType: 'academica_employee',
     contactName: 'Robert Taylor',
     department: 'Communications',
@@ -86,7 +86,7 @@ const dummyUsers = [
   },
   {
     email: 'amanda.white@academica.com',
-    password: 'password123',
+    middleName: 'Grace',
     userType: 'academica_employee',
     contactName: 'Amanda White',
     department: 'Operations',
@@ -95,7 +95,7 @@ const dummyUsers = [
   },
   {
     email: 'christopher.garcia@academica.com',
-    password: 'password123',
+    middleName: 'Luis',
     userType: 'academica_employee',
     contactName: 'Christopher Garcia',
     department: 'School Support',
@@ -108,8 +108,8 @@ export async function seedUsers() {
   console.log('Seeding users...');
 
   const stmt = db.prepare(`
-    INSERT OR IGNORE INTO users (id, email, password, userType, contactName, positionTitle, department, schoolName, principalName, phone, role)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT OR IGNORE INTO users (id, email, password, userType, contactName, middleName, positionTitle, department, schoolName, principalName, phone, role)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   let created = 0;
@@ -118,7 +118,9 @@ export async function seedUsers() {
     if (existing) continue;
 
     const id = uuidv4();
-    const hashedPassword = await bcrypt.hash(user.password, 10);
+    // Staff users use middleName as password
+    const passwordToHash = user.middleName;
+    const hashedPassword = await bcrypt.hash(passwordToHash, 10);
 
     try {
       stmt.run(
@@ -127,6 +129,7 @@ export async function seedUsers() {
         hashedPassword,
         user.userType,
         user.contactName,
+        user.middleName || null,
         user.positionTitle || null,
         user.department || null,
         user.schoolName || null,
