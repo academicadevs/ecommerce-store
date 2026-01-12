@@ -7,7 +7,12 @@ import { OrderCommunication } from '../models/OrderCommunication.js';
 const router = express.Router();
 
 // Multer for parsing multipart form data from SendGrid
-const upload = multer();
+// Increase field size limit to handle emails with attachments (50MB)
+const upload = multer({
+  limits: {
+    fieldSize: 50 * 1024 * 1024, // 50MB
+  }
+});
 
 /**
  * Strip email signature and quoted reply text from email body
