@@ -68,7 +68,7 @@ export async function sendOrderEmail({ to, subject, body, order, replyToToken, a
         name: config.fromName
       },
       replyTo: replyToAddress,
-      subject: `[Order ${orderNumber}] ${subject}`,
+      subject: subject,
       text: generatePlainTextEmail(body, order),
       html: generateHtmlEmail(body, order)
     };
@@ -246,7 +246,7 @@ function generateHtmlEmail(body, order) {
 
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); padding: 24px 32px; border-radius: 8px 8px 0 0;">
+            <td style="background-color: #1e40af; padding: 24px 32px; border-radius: 8px 8px 0 0;">
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
                   <td>
@@ -452,7 +452,7 @@ function generateProofHtml(firstName, orderNumber, proof, proofUrl) {
 
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); padding: 24px 32px; border-radius: 8px 8px 0 0;">
+            <td style="background-color: #7c3aed; padding: 24px 32px; border-radius: 8px 8px 0 0;">
               <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #ffffff;">Proof Ready for Review</h1>
               <p style="margin: 4px 0 0 0; font-family: ${systemFontStack}; font-size: 14px; color: rgba(255,255,255,0.9);">Order #${orderNumber}</p>
             </td>
@@ -476,7 +476,7 @@ function generateProofHtml(firstName, orderNumber, proof, proofUrl) {
 
               <!-- CTA Button -->
               <div style="text-align: center; margin: 32px 0;">
-                <a href="${proofUrl}" style="display: inline-block; background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: #ffffff; font-family: ${systemFontStack}; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px;">
+                <a href="${proofUrl}" style="display: inline-block; background-color: #7c3aed; color: #ffffff; font-family: ${systemFontStack}; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px;">
                   Review Proof
                 </a>
               </div>

@@ -1,16 +1,26 @@
 import express from 'express';
+import multer from 'multer';
 import { Order } from '../models/Order.js';
 import { OrderCommunication } from '../models/OrderCommunication.js';
 
 const router = express.Router();
 
+// Multer for parsing multipart form data from SendGrid
+const upload = multer();
+
 // SendGrid Inbound Parse webhook
 // This receives emails when customers reply to order emails
-router.post('/sendgrid/inbound', express.urlencoded({ extended: true }), (req, res) => {
+router.post('/sendgrid/inbound', upload.none(), (req, res) => {
   try {
     const { to, from, subject, text, html } = req.body;
 
     console.log('Received inbound email:', { to, from, subject });
+
+    // Validate required fields
+    if (!to) {
+      console.log('Missing "to" field in webhook data. Body keys:', Object.keys(req.body));
+      return res.status(200).json({ message: 'Missing to address' });
+    }
 
     // Parse the reply token from the "to" address
     // Expected format: order-{token}@parse.yourdomain.com
