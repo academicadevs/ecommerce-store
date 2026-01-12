@@ -436,8 +436,8 @@ export async function sendProofEmail({ to, cc, order, proof, proofUrl }) {
   const firstName = contactName.split(' ')[0];
   const orderNumber = order.orderNumber;
 
-  // Use provided CC list, or fall back to order's additionalEmails
-  const ccEmails = cc && cc.length > 0 ? cc : (shippingInfo?.additionalEmails || []);
+  // Use provided CC list (already resolved by caller)
+  const ccEmails = cc || [];
 
   if (!config.apiKey) {
     console.warn('SENDGRID_API_KEY not configured - proof email not sent');
