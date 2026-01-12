@@ -449,15 +449,24 @@ export async function sendProofEmail({ to, cc, order, proof, proofUrl }) {
   initSendGrid();
 
   try {
+    // Generate Message-ID for proper email headers
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 10);
+    const messageId = `<${timestamp}.${random}.proof@academicamart.com>`;
+
     const msg = {
       to,
       from: {
         email: config.fromEmail,
         name: config.fromName
       },
+      replyTo: config.fromEmail,
       subject: `Proof Ready for Review - Order #${orderNumber}`,
       text: generateProofPlainText(firstName, orderNumber, proof, proofUrl),
-      html: generateProofHtml(firstName, orderNumber, proof, proofUrl)
+      html: generateProofHtml(firstName, orderNumber, proof, proofUrl),
+      headers: {
+        'Message-ID': messageId
+      }
     };
 
     if (ccEmails.length > 0) {
@@ -465,7 +474,7 @@ export async function sendProofEmail({ to, cc, order, proof, proofUrl }) {
     }
 
     await sgMail.send(msg);
-    console.log('Proof email sent successfully to:', to);
+    console.log('Proof email sent successfully to:', to, 'Message-ID:', messageId);
 
     return { success: true, from: config.fromEmail };
   } catch (error) {
