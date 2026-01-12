@@ -1,5 +1,6 @@
 import express from 'express';
 import multer from 'multer';
+import { simpleParser } from 'mailparser';
 import { Order } from '../models/Order.js';
 import { OrderCommunication } from '../models/OrderCommunication.js';
 
@@ -10,13 +11,29 @@ const upload = multer();
 
 // SendGrid Inbound Parse webhook
 // This receives emails when customers reply to order emails
-router.post('/sendgrid/inbound', upload.none(), (req, res) => {
+router.post('/sendgrid/inbound', upload.none(), async (req, res) => {
   try {
-    const { to, from, subject, text, html, envelope } = req.body;
+    let { to, from, subject, text, html, envelope, email: rawEmail } = req.body;
 
     // Log all available fields for debugging
     console.log('Received inbound email:', { to, from, subject });
-    console.log('Body content - text length:', text?.length || 0, 'html length:', html?.length || 0);
+    console.log('Body content - text length:', text?.length || 0, 'html length:', html?.length || 0, 'raw email length:', rawEmail?.length || 0);
+
+    // If raw email is provided (Send Raw enabled), parse it
+    if (rawEmail && (!text || text.length === 0)) {
+      console.log('Parsing raw MIME email...');
+      try {
+        const parsed = await simpleParser(rawEmail);
+        to = to || parsed.to?.text || '';
+        from = from || parsed.from?.text || '';
+        subject = subject || parsed.subject || '';
+        text = parsed.text || '';
+        html = parsed.html || '';
+        console.log('Parsed from raw - text length:', text?.length || 0, 'subject:', subject);
+      } catch (parseErr) {
+        console.error('Failed to parse raw email:', parseErr.message);
+      }
+    }
 
     // Validate required fields
     if (!to) {
