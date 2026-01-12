@@ -278,6 +278,13 @@ export function initializeDatabase() {
     // Column already exists
   }
 
+  // Migration: Add messageId column for email threading
+  try {
+    db.exec(`ALTER TABLE order_communications ADD COLUMN messageId TEXT`);
+  } catch (e) {
+    // Column already exists
+  }
+
   console.log('Database initialized successfully');
 }
 

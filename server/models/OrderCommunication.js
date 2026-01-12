@@ -2,11 +2,11 @@ import db from '../utils/database.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export const OrderCommunication = {
-  create: ({ orderId, direction, adminId, senderEmail, recipientEmail, subject, body, replyToToken, attachments }) => {
+  create: ({ orderId, direction, adminId, senderEmail, recipientEmail, subject, body, replyToToken, attachments, messageId }) => {
     const id = uuidv4();
     const stmt = db.prepare(`
-      INSERT INTO order_communications (id, orderId, direction, adminId, senderEmail, recipientEmail, subject, body, replyToToken, attachments)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO order_communications (id, orderId, direction, adminId, senderEmail, recipientEmail, subject, body, replyToToken, attachments, messageId)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     stmt.run(
       id,
@@ -18,7 +18,8 @@ export const OrderCommunication = {
       subject,
       body,
       replyToToken || null,
-      attachments ? JSON.stringify(attachments) : null
+      attachments ? JSON.stringify(attachments) : null,
+      messageId || null
     );
     return OrderCommunication.findById(id);
   },
@@ -78,5 +79,23 @@ export const OrderCommunication = {
     // Output: "ord-a1b2c3d4"
     const match = toAddress.match(/order-([a-z0-9-]+)@/i);
     return match ? `ord-${match[1]}` : null;
+  },
+
+  // Get all message IDs for an order (for email threading)
+  getMessageIdsForOrder: (orderId) => {
+    const stmt = db.prepare(`
+      SELECT messageId FROM order_communications
+      WHERE orderId = ? AND messageId IS NOT NULL
+      ORDER BY createdAt ASC
+    `);
+    const rows = stmt.all(orderId);
+    return rows.map(row => row.messageId).filter(Boolean);
+  },
+
+  // Generate a unique Message-ID for email headers
+  generateMessageId: (domain = 'academicamart.com') => {
+    const timestamp = Date.now();
+    const random = uuidv4().split('-')[0];
+    return `<${timestamp}.${random}@${domain}>`;
   }
 };

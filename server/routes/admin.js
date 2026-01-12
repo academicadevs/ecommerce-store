@@ -322,6 +322,9 @@ router.post('/orders/:id/email', upload.array('attachments', 10), async (req, re
     // Generate reply token for routing inbound emails
     const replyToToken = OrderCommunication.generateReplyToken(req.params.id);
 
+    // Get previous message IDs for email threading
+    const threadMessageIds = OrderCommunication.getMessageIdsForOrder(req.params.id);
+
     // Send email via SendGrid
     const emailResult = await sendOrderEmail({
       to: customerEmail,
@@ -330,14 +333,15 @@ router.post('/orders/:id/email', upload.array('attachments', 10), async (req, re
       order,
       replyToToken,
       attachments: req.files,
-      includeOrderDetails: includeOrderDetails !== 'false'
+      includeOrderDetails: includeOrderDetails !== 'false',
+      threadMessageIds
     });
 
     if (!emailResult.success) {
       return res.status(500).json({ error: emailResult.error || 'Failed to send email' });
     }
 
-    // Record the communication with attachments
+    // Record the communication with attachments and message ID
     const communication = OrderCommunication.create({
       orderId: req.params.id,
       direction: 'outbound',
@@ -347,7 +351,8 @@ router.post('/orders/:id/email', upload.array('attachments', 10), async (req, re
       subject,
       body,
       replyToToken,
-      attachments: attachments.length > 0 ? attachments : null
+      attachments: attachments.length > 0 ? attachments : null,
+      messageId: emailResult.messageId
     });
 
     res.json({ message: 'Email sent', communication });

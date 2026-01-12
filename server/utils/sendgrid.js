@@ -33,11 +33,17 @@ const systemFontStack = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 
  * @param {Object} options.order - Full order object with details
  * @param {string} options.replyToToken - Token for routing replies (e.g., 'ord-a1b2c3d4')
  * @param {Array} options.attachments - File attachments
- * @returns {Promise<{success: boolean, from?: string, error?: string}>}
+ * @param {Array} options.threadMessageIds - Previous message IDs for threading
+ * @returns {Promise<{success: boolean, from?: string, messageId?: string, error?: string}>}
  */
-export async function sendOrderEmail({ to, subject, body, order, replyToToken, attachments, includeOrderDetails = true }) {
+export async function sendOrderEmail({ to, subject, body, order, replyToToken, attachments, includeOrderDetails = true, threadMessageIds = [] }) {
   const config = getConfig();
   const orderNumber = order.orderNumber;
+
+  // Generate a unique Message-ID for this email
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 10);
+  const messageId = `<${timestamp}.${random}@academicamart.com>`;
 
   // Get CC recipients from order's additionalEmails
   const ccEmails = order.shippingInfo?.additionalEmails || [];
@@ -45,10 +51,11 @@ export async function sendOrderEmail({ to, subject, body, order, replyToToken, a
   if (!config.apiKey) {
     console.warn('SENDGRID_API_KEY not configured - email not sent');
     // In development, log the email and return success for testing
-    console.log('Would send email:', { to, cc: ccEmails, subject, body: generatePlainTextEmail(body, order, includeOrderDetails), orderNumber, replyToToken, attachments: attachments?.length || 0 });
+    console.log('Would send email:', { to, cc: ccEmails, subject, body: generatePlainTextEmail(body, order, includeOrderDetails), orderNumber, replyToToken, attachments: attachments?.length || 0, messageId, threadMessageIds });
     return {
       success: true,
       from: config.fromEmail,
+      messageId,
       dev: true
     };
   }
@@ -70,8 +77,19 @@ export async function sendOrderEmail({ to, subject, body, order, replyToToken, a
       replyTo: replyToAddress,
       subject: subject,
       text: generatePlainTextEmail(body, order, includeOrderDetails),
-      html: generateHtmlEmail(body, order, includeOrderDetails)
+      html: generateHtmlEmail(body, order, includeOrderDetails),
+      headers: {
+        'Message-ID': messageId
+      }
     };
+
+    // Add threading headers if there are previous messages
+    if (threadMessageIds.length > 0) {
+      // In-Reply-To: the most recent message in the thread
+      msg.headers['In-Reply-To'] = threadMessageIds[threadMessageIds.length - 1];
+      // References: all previous messages in the thread
+      msg.headers['References'] = threadMessageIds.join(' ');
+    }
 
     // Add CC recipients if any
     if (ccEmails.length > 0) {
@@ -92,7 +110,7 @@ export async function sendOrderEmail({ to, subject, body, order, replyToToken, a
     await sgMail.send(msg);
     console.log('Email sent successfully to:', to, ccEmails.length > 0 ? `(CC: ${ccEmails.join(', ')})` : '');
 
-    return { success: true, from: config.fromEmail, cc: ccEmails };
+    return { success: true, from: config.fromEmail, cc: ccEmails, messageId };
   } catch (error) {
     console.error('SendGrid error:', error.response?.body || error.message);
     return {
