@@ -490,30 +490,24 @@ function generateProofPlainText(firstName, orderNumber, proof, proofUrl) {
   return `
 Hi ${firstName},
 
-A proof is ready for your review!
+A proof is ready for your review for Order #${orderNumber}.
 
-Order: #${orderNumber}
 Proof: ${proof.title || `Version ${proof.version}`}
 
-Please click the link below to review the proof and provide feedback or approve the design:
-
+To review and approve your proof, please visit:
 ${proofUrl}
 
-You can:
-- Click on specific areas of the design to leave feedback
-- Draw rectangles to highlight sections
-- Approve the proof when you're satisfied with the design
+You can click on areas of the design to leave feedback, or approve it when satisfied.
 
-This link will expire in 60 days.
-
-If you have any questions, simply reply to this email.
+This link expires in 60 days. Reply to this email with any questions.
 
 Best regards,
-AcademicaMart Team
+Academica Design Dept.
   `.trim();
 }
 
 function generateProofHtml(firstName, orderNumber, proof, proofUrl) {
+  // Use a simpler template that matches order emails to avoid spam filters
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -530,8 +524,8 @@ function generateProofHtml(firstName, orderNumber, proof, proofUrl) {
 
           <!-- Header -->
           <tr>
-            <td style="background-color: #7c3aed; padding: 24px 32px; border-radius: 8px 8px 0 0;">
-              <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #ffffff;">Proof Ready for Review</h1>
+            <td style="background-color: #1e40af; padding: 24px 32px; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #ffffff;">AcademicaMart</h1>
               <p style="margin: 4px 0 0 0; font-family: ${systemFontStack}; font-size: 14px; color: rgba(255,255,255,0.9);">Order #${orderNumber}</p>
             </td>
           </tr>
@@ -542,35 +536,18 @@ function generateProofHtml(firstName, orderNumber, proof, proofUrl) {
               <p style="margin: 0 0 20px 0; font-family: ${systemFontStack}; font-size: 16px; color: #374151;">
                 Hi ${escapeHtml(firstName)},
               </p>
-              <p style="margin: 0 0 24px 0; font-family: ${systemFontStack}; font-size: 15px; line-height: 1.6; color: #374151;">
-                A proof is ready for your review! Please take a moment to review the design and provide any feedback or approve it for production.
+              <p style="margin: 0 0 16px 0; font-family: ${systemFontStack}; font-size: 15px; line-height: 1.6; color: #374151;">
+                A proof is ready for your review: <strong>${escapeHtml(proof.title || `Version ${proof.version}`)}</strong>
               </p>
-
-              <!-- Proof Info Box -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-                <p style="margin: 0 0 8px 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;">PROOF DETAILS</p>
-                <p style="margin: 0; font-family: ${systemFontStack}; font-size: 18px; font-weight: 600; color: #111827;">${escapeHtml(proof.title || `Version ${proof.version}`)}</p>
-              </div>
-
-              <!-- CTA Button -->
-              <div style="text-align: center; margin: 32px 0;">
-                <a href="${proofUrl}" style="display: inline-block; background-color: #7c3aed; color: #ffffff; font-family: ${systemFontStack}; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px;">
-                  Review Proof
-                </a>
-              </div>
-
-              <!-- Instructions -->
-              <div style="border-top: 1px solid #e5e7eb; padding-top: 24px;">
-                <p style="margin: 0 0 12px 0; font-family: ${systemFontStack}; font-size: 14px; font-weight: 600; color: #111827;">What you can do:</p>
-                <ul style="margin: 0; padding: 0 0 0 20px; font-family: ${systemFontStack}; font-size: 14px; line-height: 1.8; color: #374151;">
-                  <li>Click on specific areas of the design to leave feedback</li>
-                  <li>Draw rectangles to highlight sections that need changes</li>
-                  <li>Approve the proof when you're satisfied with the design</li>
-                </ul>
-              </div>
-
-              <p style="margin: 24px 0 0 0; font-family: ${systemFontStack}; font-size: 13px; color: #9ca3af;">
-                This link will expire in 60 days. If you have questions, simply reply to this email.
+              <p style="margin: 0 0 16px 0; font-family: ${systemFontStack}; font-size: 15px; line-height: 1.6; color: #374151;">
+                Please review the design and provide any feedback or approve it for production.
+              </p>
+              <p style="margin: 0 0 24px 0; font-family: ${systemFontStack}; font-size: 15px; line-height: 1.6; color: #374151;">
+                <strong>Review your proof here:</strong><br>
+                <a href="${proofUrl}" style="color: #1e40af; text-decoration: underline;">${proofUrl}</a>
+              </p>
+              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;">
+                This link expires in 60 days. Reply to this email with any questions.
               </p>
             </td>
           </tr>
@@ -578,8 +555,8 @@ function generateProofHtml(firstName, orderNumber, proof, proofUrl) {
           <!-- Footer -->
           <tr>
             <td style="background-color: #f9fafb; padding: 20px 32px; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280; text-align: center;">
-                AcademicaMart - Quality educational materials for Academica schools
+              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;">
+                <strong>Simply reply to this email to respond.</strong>
               </p>
             </td>
           </tr>
