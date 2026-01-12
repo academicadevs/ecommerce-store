@@ -419,8 +419,14 @@ function escapeHtml(str) {
 
 /**
  * Send proof notification email to customer
+ * @param {Object} options
+ * @param {string} options.to - Recipient email
+ * @param {Array} options.cc - CC recipients (optional, overrides order's additionalEmails)
+ * @param {Object} options.order - Order object
+ * @param {Object} options.proof - Proof object
+ * @param {string} options.proofUrl - URL to review the proof
  */
-export async function sendProofEmail({ to, order, proof, proofUrl }) {
+export async function sendProofEmail({ to, cc, order, proof, proofUrl }) {
   const config = getConfig();
   const shippingInfo = typeof order.shippingInfo === 'string'
     ? JSON.parse(order.shippingInfo)
@@ -430,8 +436,8 @@ export async function sendProofEmail({ to, order, proof, proofUrl }) {
   const firstName = contactName.split(' ')[0];
   const orderNumber = order.orderNumber;
 
-  // Get CC recipients
-  const ccEmails = shippingInfo?.additionalEmails || [];
+  // Use provided CC list, or fall back to order's additionalEmails
+  const ccEmails = cc && cc.length > 0 ? cc : (shippingInfo?.additionalEmails || []);
 
   if (!config.apiKey) {
     console.warn('SENDGRID_API_KEY not configured - proof email not sent');
