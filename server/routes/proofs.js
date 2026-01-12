@@ -98,36 +98,14 @@ router.post('/upload', authenticate, requireAdmin, upload.single('file'), async 
         : (order.shippingInfo || {});
       const customerEmail = shippingInfo.email;
 
-      // Parse CC emails from request (can include existing + additional)
-      // If not provided, fall back to order's additionalEmails
-      let ccEmails = null;
-      if (req.body.ccEmails) {
-        try {
-          const parsed = JSON.parse(req.body.ccEmails);
-          if (parsed && parsed.length > 0) {
-            ccEmails = parsed;
-          }
-        } catch (e) {
-          console.error('Failed to parse ccEmails:', e);
-        }
-      }
-
-      // If no CC from request, use order's additionalEmails
-      if (!ccEmails) {
-        ccEmails = shippingInfo.additionalEmails || [];
-      }
-
-      console.log('Proof email CC list:', ccEmails);
-
       if (customerEmail) {
         // Generate the proof review URL
         const baseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
         const proofUrl = `${baseUrl}/proof/${proof.accessToken}`;
 
-        // Send email with CC recipients
+        // Send email
         await sendProofEmail({
           to: customerEmail,
-          cc: ccEmails.length > 0 ? ccEmails : undefined,
           order,
           proof,
           proofUrl

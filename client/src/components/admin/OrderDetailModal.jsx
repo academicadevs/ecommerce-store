@@ -597,7 +597,6 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
                   orderId={order.id}
                   orderNumber={order.orderNumber}
                   proofs={proofs}
-                  existingCcEmails={ccEmails}
                   onUpdate={() => {
                     loadProofs();
                     loadCommunications();

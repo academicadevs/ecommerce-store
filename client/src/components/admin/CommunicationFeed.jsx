@@ -166,7 +166,7 @@ export default function CommunicationFeed({ communications, loading }) {
                           </button>
                         )}
                         <a
-                          href={`/api/download?file=${encodeURIComponent(att.path)}&name=${encodeURIComponent(att.filename)}`}
+                          href={`${att.path}/download`}
                           className="p-1 text-gray-400 hover:text-academica-blue"
                           title="Download"
                         >
@@ -207,7 +207,7 @@ export default function CommunicationFeed({ communications, loading }) {
             />
             <div className="mt-2 text-center">
               <a
-                href={`/api/download?file=${encodeURIComponent(previewImage)}`}
+                href={`${previewImage}/download`}
                 className="inline-flex items-center gap-2 text-white hover:text-gray-300"
                 onClick={(e) => e.stopPropagation()}
               >

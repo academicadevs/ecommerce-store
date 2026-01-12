@@ -13,38 +13,13 @@ const statusLabels = {
   approved: 'Approved',
 };
 
-export default function ProofManager({ orderId, orderNumber, proofs, onUpdate, existingCcEmails = [] }) {
+export default function ProofManager({ orderId, orderNumber, proofs, onUpdate }) {
   const [uploading, setUploading] = useState(false);
   const [title, setTitle] = useState('');
   const [sendEmail, setSendEmail] = useState(true);
   const [selectedFile, setSelectedFile] = useState(null);
   const [expandedProof, setExpandedProof] = useState(null);
-  const [additionalCc, setAdditionalCc] = useState([]);
-  const [newCcEmail, setNewCcEmail] = useState('');
   const fileInputRef = useRef(null);
-
-  const handleAddCc = () => {
-    const email = newCcEmail.trim().toLowerCase();
-    if (!email) return;
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      alert('Please enter a valid email address');
-      return;
-    }
-
-    if (existingCcEmails.includes(email) || additionalCc.includes(email)) {
-      alert('This email is already in the CC list');
-      return;
-    }
-
-    setAdditionalCc([...additionalCc, email]);
-    setNewCcEmail('');
-  };
-
-  const handleRemoveCc = (emailToRemove) => {
-    setAdditionalCc(additionalCc.filter(e => e !== emailToRemove));
-  };
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
@@ -67,16 +42,9 @@ export default function ProofManager({ orderId, orderNumber, proofs, onUpdate, e
       formData.append('title', title || `Proof ${new Date().toLocaleDateString()}`);
       formData.append('sendEmail', sendEmail);
 
-      // Combine existing CC emails with any additional ones for this proof
-      const allCcEmails = [...existingCcEmails, ...additionalCc];
-      if (allCcEmails.length > 0) {
-        formData.append('ccEmails', JSON.stringify(allCcEmails));
-      }
-
       await adminAPI.uploadProof(formData);
       setSelectedFile(null);
       setTitle('');
-      setAdditionalCc([]);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -189,77 +157,6 @@ export default function ProofManager({ orderId, orderNumber, proofs, onUpdate, e
                 />
                 <span className="text-gray-700">Send email notification to customer</span>
               </label>
-
-              {/* CC Email Section - shown when send email is checked */}
-              {sendEmail && (
-                <div className="p-3 bg-white rounded-lg border border-gray-200">
-                  <label className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-2 block">
-                    CC Recipients
-                  </label>
-
-                  {/* Existing CC from order */}
-                  {existingCcEmails.length > 0 && (
-                    <div className="mb-2">
-                      <div className="text-xs text-gray-500 mb-1">From order settings:</div>
-                      <div className="flex flex-wrap gap-1">
-                        {existingCcEmails.map((email) => (
-                          <span
-                            key={email}
-                            className="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
-                          >
-                            {email}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Additional CC for this proof */}
-                  {additionalCc.length > 0 && (
-                    <div className="mb-2">
-                      <div className="text-xs text-gray-500 mb-1">Additional for this proof:</div>
-                      <div className="flex flex-wrap gap-1">
-                        {additionalCc.map((email) => (
-                          <span
-                            key={email}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs"
-                          >
-                            {email}
-                            <button
-                              onClick={() => handleRemoveCc(email)}
-                              className="text-purple-400 hover:text-purple-600"
-                            >
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Add new CC email */}
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      value={newCcEmail}
-                      onChange={(e) => setNewCcEmail(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCc())}
-                      placeholder="Add CC email..."
-                      className="flex-1 text-sm px-2 py-1 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddCc}
-                      disabled={!newCcEmail.trim()}
-                      className="px-2 py-1 text-sm bg-purple-100 text-purple-700 rounded hover:bg-purple-200 disabled:opacity-50"
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
-              )}
 
               <button
                 onClick={handleUpload}

@@ -419,14 +419,8 @@ function escapeHtml(str) {
 
 /**
  * Send proof notification email to customer
- * @param {Object} options
- * @param {string} options.to - Recipient email
- * @param {Array} options.cc - CC recipients (optional, overrides order's additionalEmails)
- * @param {Object} options.order - Order object
- * @param {Object} options.proof - Proof object
- * @param {string} options.proofUrl - URL to review the proof
  */
-export async function sendProofEmail({ to, cc, order, proof, proofUrl }) {
+export async function sendProofEmail({ to, order, proof, proofUrl }) {
   const config = getConfig();
   const shippingInfo = typeof order.shippingInfo === 'string'
     ? JSON.parse(order.shippingInfo)
@@ -436,8 +430,8 @@ export async function sendProofEmail({ to, cc, order, proof, proofUrl }) {
   const firstName = contactName.split(' ')[0];
   const orderNumber = order.orderNumber;
 
-  // Use provided CC list (already resolved by caller)
-  const ccEmails = cc || [];
+  // Get CC recipients
+  const ccEmails = shippingInfo?.additionalEmails || [];
 
   if (!config.apiKey) {
     console.warn('SENDGRID_API_KEY not configured - proof email not sent');
@@ -449,37 +443,15 @@ export async function sendProofEmail({ to, cc, order, proof, proofUrl }) {
   initSendGrid();
 
   try {
-    // Generate Message-ID for proper email headers
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 10);
-    const messageId = `<${timestamp}.${random}.proof@academicamart.com>`;
-
-    // Build proof message body
-    const proofMessage = `Hi ${firstName},
-
-A proof is ready for your review: ${proof.title || `Version ${proof.version}`}
-
-Please review the design and provide any feedback or approve it for production:
-${proofUrl}
-
-This link expires in 60 days.
-
-Best regards,
-AcademicaMart Team`;
-
     const msg = {
       to,
       from: {
         email: config.fromEmail,
         name: config.fromName
       },
-      replyTo: config.fromEmail,
       subject: `Proof Ready for Review - Order #${orderNumber}`,
-      text: generatePlainTextEmail(proofMessage, order, true),
-      html: generateHtmlEmail(proofMessage, order, true),
-      headers: {
-        'Message-ID': messageId
-      }
+      text: generateProofPlainText(firstName, orderNumber, proof, proofUrl),
+      html: generateProofHtml(firstName, orderNumber, proof, proofUrl)
     };
 
     if (ccEmails.length > 0) {
@@ -487,7 +459,7 @@ AcademicaMart Team`;
     }
 
     await sgMail.send(msg);
-    console.log('Proof email sent successfully to:', to, 'Message-ID:', messageId);
+    console.log('Proof email sent successfully to:', to);
 
     return { success: true, from: config.fromEmail };
   } catch (error) {
@@ -497,6 +469,113 @@ AcademicaMart Team`;
       error: error.response?.body?.errors?.[0]?.message || error.message
     };
   }
+}
+
+function generateProofPlainText(firstName, orderNumber, proof, proofUrl) {
+  return `
+Hi ${firstName},
+
+A proof is ready for your review!
+
+Order: #${orderNumber}
+Proof: ${proof.title || `Version ${proof.version}`}
+
+Please click the link below to review the proof and provide feedback or approve the design:
+
+${proofUrl}
+
+You can:
+- Click on specific areas of the design to leave feedback
+- Draw rectangles to highlight sections
+- Approve the proof when you're satisfied with the design
+
+This link will expire in 60 days.
+
+If you have any questions, simply reply to this email.
+
+Best regards,
+AcademicaMart Team
+  `.trim();
+}
+
+function generateProofHtml(firstName, orderNumber, proof, proofUrl) {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proof Ready for Review</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: ${systemFontStack};">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f3f4f6;">
+    <tr>
+      <td style="padding: 30px 20px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 640px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #7c3aed; padding: 24px 32px; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #ffffff;">Proof Ready for Review</h1>
+              <p style="margin: 4px 0 0 0; font-family: ${systemFontStack}; font-size: 14px; color: rgba(255,255,255,0.9);">Order #${orderNumber}</p>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 32px;">
+              <p style="margin: 0 0 20px 0; font-family: ${systemFontStack}; font-size: 16px; color: #374151;">
+                Hi ${escapeHtml(firstName)},
+              </p>
+              <p style="margin: 0 0 24px 0; font-family: ${systemFontStack}; font-size: 15px; line-height: 1.6; color: #374151;">
+                A proof is ready for your review! Please take a moment to review the design and provide any feedback or approve it for production.
+              </p>
+
+              <!-- Proof Info Box -->
+              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                <p style="margin: 0 0 8px 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;">PROOF DETAILS</p>
+                <p style="margin: 0; font-family: ${systemFontStack}; font-size: 18px; font-weight: 600; color: #111827;">${escapeHtml(proof.title || `Version ${proof.version}`)}</p>
+              </div>
+
+              <!-- CTA Button -->
+              <div style="text-align: center; margin: 32px 0;">
+                <a href="${proofUrl}" style="display: inline-block; background-color: #7c3aed; color: #ffffff; font-family: ${systemFontStack}; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px;">
+                  Review Proof
+                </a>
+              </div>
+
+              <!-- Instructions -->
+              <div style="border-top: 1px solid #e5e7eb; padding-top: 24px;">
+                <p style="margin: 0 0 12px 0; font-family: ${systemFontStack}; font-size: 14px; font-weight: 600; color: #111827;">What you can do:</p>
+                <ul style="margin: 0; padding: 0 0 0 20px; font-family: ${systemFontStack}; font-size: 14px; line-height: 1.8; color: #374151;">
+                  <li>Click on specific areas of the design to leave feedback</li>
+                  <li>Draw rectangles to highlight sections that need changes</li>
+                  <li>Approve the proof when you're satisfied with the design</li>
+                </ul>
+              </div>
+
+              <p style="margin: 24px 0 0 0; font-family: ${systemFontStack}; font-size: 13px; color: #9ca3af;">
+                This link will expire in 60 days. If you have questions, simply reply to this email.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 20px 32px; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280; text-align: center;">
+                AcademicaMart - Quality educational materials for Academica schools
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
 }
 
 export default { sendOrderEmail, sendProofEmail };
