@@ -2,7 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { dirname, join, basename } from 'path';
+import { existsSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -46,6 +47,39 @@ app.use('/api/proofs', proofRoutes);
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Download endpoint - serves files with Content-Disposition: attachment
+app.get('/api/download', (req, res) => {
+  const { file, name } = req.query;
+
+  if (!file) {
+    return res.status(400).json({ error: 'File path required' });
+  }
+
+  // Security: Only allow files from uploads directory
+  if (!file.startsWith('/uploads/')) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  // Convert URL path to filesystem path
+  const filePath = join(__dirname, file.replace('/uploads/', 'uploads/'));
+
+  if (!existsSync(filePath)) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+
+  // Use provided filename or extract from path
+  const downloadName = name || basename(filePath);
+
+  res.download(filePath, downloadName, (err) => {
+    if (err) {
+      console.error('Download error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Download failed' });
+      }
+    }
+  });
 });
 
 // Serve frontend in production
