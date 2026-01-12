@@ -285,6 +285,20 @@ export function initializeDatabase() {
     // Column already exists
   }
 
+  // Migration: Add readByAdmin column to order_communications for notification tracking
+  try {
+    db.exec(`ALTER TABLE order_communications ADD COLUMN readByAdmin INTEGER DEFAULT 0`);
+  } catch (e) {
+    // Column already exists
+  }
+
+  // Migration: Add readByAdmin column to proof_annotations for notification tracking
+  try {
+    db.exec(`ALTER TABLE proof_annotations ADD COLUMN readByAdmin INTEGER DEFAULT 0`);
+  } catch (e) {
+    // Column already exists
+  }
+
   console.log('Database initialized successfully');
 }
 

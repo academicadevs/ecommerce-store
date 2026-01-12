@@ -39,10 +39,12 @@ export default function ManageOrders() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [viewFilter, setViewFilter] = useState('all'); // 'all', 'mine', or admin ID
   const [searchQuery, setSearchQuery] = useState('');
+  const [unreadCounts, setUnreadCounts] = useState({});
 
   useEffect(() => {
     loadOrders();
     loadAdmins();
+    loadUnreadCounts();
   }, []);
 
   const loadOrders = async () => {
@@ -62,6 +64,15 @@ export default function ManageOrders() {
       setAdmins(response.data.admins);
     } catch (error) {
       console.error('Failed to load admins:', error);
+    }
+  };
+
+  const loadUnreadCounts = async () => {
+    try {
+      const response = await adminAPI.getUnreadCounts();
+      setUnreadCounts(response.data.counts || {});
+    } catch (error) {
+      console.error('Failed to load unread counts:', error);
     }
   };
 
@@ -91,18 +102,27 @@ export default function ManageOrders() {
     }
   };
 
-  const handleViewDetails = (order) => {
+  const handleViewDetails = async (order) => {
     setSelectedOrder(order);
     setIsModalOpen(true);
+    // Mark notifications as read when viewing order
+    try {
+      await adminAPI.markNotificationsRead(order.id);
+      loadUnreadCounts();
+    } catch (error) {
+      console.error('Failed to mark as read:', error);
+    }
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedOrder(null);
+    loadUnreadCounts(); // Refresh counts after closing modal
   };
 
   const handleOrderUpdate = () => {
     loadOrders();
+    loadUnreadCounts();
   };
 
   // Check if viewing a specific admin's orders (not 'all', 'mine', or 'unassigned')
@@ -301,6 +321,30 @@ export default function ManageOrders() {
                     </div>
                     <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
                       <span className="font-mono">{order.orderNumber || `#${order.id.toString().slice(0, 8).toUpperCase()}`}</span>
+                      {unreadCounts[order.id]?.total > 0 && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full">
+                          {unreadCounts[order.id].messages > 0 && (
+                            <span title="New messages" className="flex items-center">
+                              <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                              </svg>
+                              <span className="ml-0.5">{unreadCounts[order.id].messages}</span>
+                            </span>
+                          )}
+                          {unreadCounts[order.id].messages > 0 && unreadCounts[order.id].feedback > 0 && (
+                            <span className="text-red-200">|</span>
+                          )}
+                          {unreadCounts[order.id].feedback > 0 && (
+                            <span title="New feedback" className="flex items-center">
+                              <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2zM5 7a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm1 3a1 1 0 100 2h3a1 1 0 100-2H6z" clipRule="evenodd" />
+                              </svg>
+                              <span className="ml-0.5">{unreadCounts[order.id].feedback}</span>
+                            </span>
+                          )}
+                        </span>
+                      )}
                       <span>•</span>
                       <span>{new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                     </div>

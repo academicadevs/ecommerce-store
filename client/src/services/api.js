@@ -66,6 +66,10 @@ export const ordersAPI = {
 // Admin API
 export const adminAPI = {
   getStats: () => api.get('/admin/stats'),
+  // Notifications
+  getUnreadCounts: () => api.get('/admin/notifications/unread-counts'),
+  getRecentNotifications: () => api.get('/admin/notifications/recent'),
+  markNotificationsRead: (orderId) => api.post(`/admin/notifications/mark-read/${orderId}`),
   // Products
   getProducts: () => api.get('/admin/products'),
   createProduct: (data) => api.post('/admin/products', data),

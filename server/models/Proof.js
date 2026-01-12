@@ -173,6 +173,58 @@ export class ProofAnnotation {
   static delete(id) {
     db.prepare(`DELETE FROM proof_annotations WHERE id = ?`).run(id);
   }
+
+  // Get unread annotation count for an order (via proofs)
+  static getUnreadCountByOrder(orderId) {
+    const stmt = db.prepare(`
+      SELECT COUNT(*) as count
+      FROM proof_annotations pa
+      JOIN proofs p ON pa.proofId = p.id
+      WHERE p.orderId = ? AND pa.readByAdmin = 0
+    `);
+    return stmt.get(orderId)?.count || 0;
+  }
+
+  // Get unread counts for all orders (for badges)
+  static getUnreadCountsByOrder() {
+    const stmt = db.prepare(`
+      SELECT p.orderId, COUNT(*) as count
+      FROM proof_annotations pa
+      JOIN proofs p ON pa.proofId = p.id
+      WHERE pa.readByAdmin = 0
+      GROUP BY p.orderId
+    `);
+    const rows = stmt.all();
+    const counts = {};
+    rows.forEach(row => {
+      counts[row.orderId] = row.count;
+    });
+    return counts;
+  }
+
+  // Mark all annotations for an order's proofs as read
+  static markAsReadByOrder(orderId) {
+    const stmt = db.prepare(`
+      UPDATE proof_annotations
+      SET readByAdmin = 1
+      WHERE proofId IN (SELECT id FROM proofs WHERE orderId = ?) AND readByAdmin = 0
+    `);
+    stmt.run(orderId);
+  }
+
+  // Get recent unread annotations (for notifications panel)
+  static getRecentUnread(limit = 10) {
+    const stmt = db.prepare(`
+      SELECT pa.*, p.orderId, p.title as proofTitle, p.version as proofVersion, o.orderNumber
+      FROM proof_annotations pa
+      JOIN proofs p ON pa.proofId = p.id
+      JOIN orders o ON p.orderId = o.id
+      WHERE pa.readByAdmin = 0
+      ORDER BY pa.createdAt DESC
+      LIMIT ?
+    `);
+    return stmt.all(limit);
+  }
 }
 
 export default { Proof, ProofAnnotation };

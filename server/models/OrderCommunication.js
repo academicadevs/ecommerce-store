@@ -97,5 +97,52 @@ export const OrderCommunication = {
     const timestamp = Date.now();
     const random = uuidv4().split('-')[0];
     return `<${timestamp}.${random}@${domain}>`;
+  },
+
+  // Get unread inbound message count for an order
+  getUnreadCount: (orderId) => {
+    const stmt = db.prepare(`
+      SELECT COUNT(*) as count FROM order_communications
+      WHERE orderId = ? AND direction = 'inbound' AND readByAdmin = 0
+    `);
+    return stmt.get(orderId)?.count || 0;
+  },
+
+  // Get unread counts for all orders (for badges)
+  getUnreadCountsByOrder: () => {
+    const stmt = db.prepare(`
+      SELECT orderId, COUNT(*) as count FROM order_communications
+      WHERE direction = 'inbound' AND readByAdmin = 0
+      GROUP BY orderId
+    `);
+    const rows = stmt.all();
+    const counts = {};
+    rows.forEach(row => {
+      counts[row.orderId] = row.count;
+    });
+    return counts;
+  },
+
+  // Mark all inbound messages for an order as read
+  markAsRead: (orderId) => {
+    const stmt = db.prepare(`
+      UPDATE order_communications
+      SET readByAdmin = 1
+      WHERE orderId = ? AND direction = 'inbound' AND readByAdmin = 0
+    `);
+    stmt.run(orderId);
+  },
+
+  // Get recent unread messages (for notifications panel)
+  getRecentUnread: (limit = 10) => {
+    const stmt = db.prepare(`
+      SELECT oc.*, o.orderNumber
+      FROM order_communications oc
+      JOIN orders o ON oc.orderId = o.id
+      WHERE oc.direction = 'inbound' AND oc.readByAdmin = 0
+      ORDER BY oc.createdAt DESC
+      LIMIT ?
+    `);
+    return stmt.all(limit);
   }
 };

@@ -28,14 +28,27 @@ function stripSignatureAndQuotes(text) {
       break;
     }
 
-    // Stop at "On [date], [name] wrote:" pattern (quoted reply header)
-    if (/^On .+ wrote:$/i.test(trimmedLine)) {
+    // Stop at "On [date], [name] wrote:" pattern (various formats)
+    // Gmail: "On Mon, Jan 12, 2026 at 3:45 PM John Doe <john@example.com> wrote:"
+    // Apple: "On Jan 12, 2026, at 3:45 PM, John Doe <john@example.com> wrote:"
+    if (/^On\s+.+wrote:?\s*$/i.test(trimmedLine)) {
       break;
     }
 
-    // Stop at Gmail-style quote header
-    if (/^On .+at .+(AM|PM).+wrote:$/i.test(trimmedLine)) {
-      break;
+    // Handle "On [date]" that continues on next line with "wrote:"
+    if (/^On\s+(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d)/i.test(trimmedLine)) {
+      // Look ahead to see if next non-empty line ends with "wrote:"
+      let foundWrote = false;
+      for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+        const nextLine = lines[j].trim();
+        if (nextLine && /wrote:?\s*$/i.test(nextLine)) {
+          foundWrote = true;
+          break;
+        }
+      }
+      if (foundWrote || trimmedLine.includes('<') && trimmedLine.includes('@')) {
+        break;
+      }
     }
 
     // Stop at lines starting with ">" (quoted text)
@@ -43,13 +56,33 @@ function stripSignatureAndQuotes(text) {
       break;
     }
 
-    // Stop at "From:" header (forwarded/quoted email)
+    // Stop at "From:" header (forwarded/quoted email - Outlook style)
     if (/^From:\s*.+$/i.test(trimmedLine)) {
+      break;
+    }
+
+    // Stop at Outlook-style separator
+    if (/^_{10,}$/.test(trimmedLine) || /^-{10,}$/.test(trimmedLine)) {
+      break;
+    }
+
+    // Stop at "Original Message" markers
+    if (/^-+\s*Original Message\s*-+$/i.test(trimmedLine)) {
       break;
     }
 
     // Stop at horizontal rules or separators often used before signatures
     if (/^[-_=]{3,}$/.test(trimmedLine)) {
+      break;
+    }
+
+    // Stop at common mobile signatures
+    if (/^Sent from (my )?(iPhone|iPad|Android|Galaxy|Samsung|Mobile|Outlook)/i.test(trimmedLine)) {
+      break;
+    }
+
+    // Stop at "Get Outlook for iOS/Android" type signatures
+    if (/^Get Outlook for (iOS|Android)/i.test(trimmedLine)) {
       break;
     }
 
@@ -137,23 +170,33 @@ router.post('/sendgrid/inbound', upload.none(), async (req, res) => {
       // Use plain text if available
       bodyContent = text.trim();
     } else if (html) {
+      // Remove quoted content from HTML before stripping tags
+      // Gmail uses <div class="gmail_quote">, Outlook uses <div id="appendonsend">
+      let cleanHtml = html
+        .replace(/<div[^>]*class=["'][^"']*gmail_quote[^"']*["'][^>]*>[\s\S]*$/gi, '')
+        .replace(/<div[^>]*id=["']?appendonsend["']?[^>]*>[\s\S]*$/gi, '')
+        .replace(/<blockquote[^>]*>[\s\S]*<\/blockquote>/gi, '')
+        .replace(/<div[^>]*class=["'][^"']*yahoo_quoted[^"']*["'][^>]*>[\s\S]*$/gi, '');
+
       // Strip HTML tags and decode entities
-      bodyContent = html
+      bodyContent = cleanHtml
         .replace(/<br\s*\/?>/gi, '\n')
         .replace(/<\/p>/gi, '\n\n')
+        .replace(/<\/div>/gi, '\n')
         .replace(/<[^>]*>/g, '')
         .replace(/&nbsp;/g, ' ')
         .replace(/&amp;/g, '&')
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
         .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
         .trim();
     }
 
-    // Strip signature and quoted reply text
+    // Strip signature and quoted reply text (handles plain text patterns)
     bodyContent = stripSignatureAndQuotes(bodyContent);
 
-    console.log('Extracted body content:', bodyContent.substring(0, 200));
+    console.log('Final cleaned body:', bodyContent.substring(0, 300));
 
     // Record the inbound communication
     const communication = OrderCommunication.create({

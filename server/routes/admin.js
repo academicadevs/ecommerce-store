@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Product } from '../models/Product.js';
 import { Order } from '../models/Order.js';
 import { OrderCommunication } from '../models/OrderCommunication.js';
+import { Proof, ProofAnnotation } from '../models/Proof.js';
 import { User } from '../models/User.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 import { seedAll } from '../scripts/seedAll.js';
@@ -62,6 +63,89 @@ router.get('/stats', (req, res) => {
   } catch (error) {
     console.error('Error fetching stats:', error);
     res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+// Notifications - unread counts for all orders (for badges)
+router.get('/notifications/unread-counts', (req, res) => {
+  try {
+    const messageCounts = OrderCommunication.getUnreadCountsByOrder();
+    const feedbackCounts = ProofAnnotation.getUnreadCountsByOrder();
+
+    // Merge counts by order
+    const allOrderIds = new Set([...Object.keys(messageCounts), ...Object.keys(feedbackCounts)]);
+    const counts = {};
+    allOrderIds.forEach(orderId => {
+      counts[orderId] = {
+        messages: messageCounts[orderId] || 0,
+        feedback: feedbackCounts[orderId] || 0,
+        total: (messageCounts[orderId] || 0) + (feedbackCounts[orderId] || 0)
+      };
+    });
+
+    res.json({ counts });
+  } catch (error) {
+    console.error('Error fetching unread counts:', error);
+    res.status(500).json({ error: 'Failed to fetch unread counts' });
+  }
+});
+
+// Notifications - recent unread items (for dashboard panel)
+router.get('/notifications/recent', (req, res) => {
+  try {
+    const recentMessages = OrderCommunication.getRecentUnread(10);
+    const recentFeedback = ProofAnnotation.getRecentUnread(10);
+
+    // Combine and sort by date
+    const notifications = [
+      ...recentMessages.map(msg => ({
+        id: msg.id,
+        type: 'message',
+        orderId: msg.orderId,
+        orderNumber: msg.orderNumber,
+        subject: msg.subject,
+        body: msg.body?.substring(0, 100) + (msg.body?.length > 100 ? '...' : ''),
+        senderEmail: msg.senderEmail,
+        createdAt: msg.createdAt
+      })),
+      ...recentFeedback.map(fb => ({
+        id: fb.id,
+        type: 'feedback',
+        orderId: fb.orderId,
+        orderNumber: fb.orderNumber,
+        proofTitle: fb.proofTitle,
+        proofVersion: fb.proofVersion,
+        comment: fb.comment?.substring(0, 100) + (fb.comment?.length > 100 ? '...' : ''),
+        authorName: fb.authorName,
+        createdAt: fb.createdAt
+      }))
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 15);
+
+    const totalUnread = {
+      messages: recentMessages.length,
+      feedback: recentFeedback.length
+    };
+
+    res.json({ notifications, totalUnread });
+  } catch (error) {
+    console.error('Error fetching recent notifications:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+// Mark notifications as read for an order
+router.post('/notifications/mark-read/:orderId', (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    // Mark both messages and feedback as read
+    OrderCommunication.markAsRead(orderId);
+    ProofAnnotation.markAsReadByOrder(orderId);
+
+    res.json({ message: 'Notifications marked as read' });
+  } catch (error) {
+    console.error('Error marking notifications as read:', error);
+    res.status(500).json({ error: 'Failed to mark as read' });
   }
 });
 

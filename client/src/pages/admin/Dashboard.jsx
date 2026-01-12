@@ -26,9 +26,12 @@ const statusBadgeClass = {
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const [totalUnread, setTotalUnread] = useState({ messages: 0, feedback: 0 });
 
   useEffect(() => {
     loadStats();
+    loadNotifications();
   }, []);
 
   const loadStats = async () => {
@@ -42,6 +45,31 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadNotifications = async () => {
+    try {
+      const response = await adminAPI.getRecentNotifications();
+      setNotifications(response.data.notifications || []);
+      setTotalUnread(response.data.totalUnread || { messages: 0, feedback: 0 });
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+    }
+  };
+
+  const formatTimeAgo = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -49,6 +77,8 @@ export default function AdminDashboard() {
       </div>
     );
   }
+
+  const totalUnreadCount = (totalUnread.messages || 0) + (totalUnread.feedback || 0);
 
   const statCards = [
     {
@@ -83,6 +113,17 @@ export default function AdminDashboard() {
       ),
       color: 'bg-purple-500',
       link: '/admin/users',
+    },
+    {
+      title: 'Unread Notifications',
+      value: totalUnreadCount,
+      icon: (
+        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+        </svg>
+      ),
+      color: totalUnreadCount > 0 ? 'bg-red-500' : 'bg-gray-400',
+      link: '/admin/orders',
     },
   ];
 
@@ -161,6 +202,72 @@ export default function AdminDashboard() {
           </div>
         </Link>
       </div>
+
+      {/* Notifications Panel */}
+      {notifications.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm mb-8">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              New Activity
+              <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                {notifications.length}
+              </span>
+            </h2>
+            <Link to="/admin/orders" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
+              View All Orders →
+            </Link>
+          </div>
+          <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
+            {notifications.map((notif) => (
+              <Link
+                key={`${notif.type}-${notif.id}`}
+                to="/admin/orders"
+                className="block px-6 py-4 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-start gap-3">
+                  {notif.type === 'message' ? (
+                    <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  ) : (
+                    <div className="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                      </svg>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-900">
+                        {notif.type === 'message' ? 'New Reply' : 'New Proof Feedback'}
+                        <span className="font-mono text-gray-500 ml-2">#{notif.orderNumber}</span>
+                      </p>
+                      <span className="text-xs text-gray-400">{formatTimeAgo(notif.createdAt)}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 truncate mt-0.5">
+                      {notif.type === 'message' ? (
+                        <>From {notif.senderEmail}: {notif.body}</>
+                      ) : (
+                        <>{notif.authorName}: {notif.comment}</>
+                      )}
+                    </p>
+                    {notif.type === 'feedback' && notif.proofTitle && (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        On proof: {notif.proofTitle} (v{notif.proofVersion})
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent Orders */}
       <div className="bg-white rounded-lg shadow-sm">
