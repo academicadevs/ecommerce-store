@@ -89,9 +89,26 @@ export function initializeDatabase() {
       FOREIGN KEY (adminId) REFERENCES users(id)
     );
 
+    CREATE TABLE IF NOT EXISTS order_communications (
+      id TEXT PRIMARY KEY,
+      orderId TEXT NOT NULL,
+      direction TEXT NOT NULL,
+      adminId TEXT,
+      senderEmail TEXT NOT NULL,
+      recipientEmail TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      body TEXT NOT NULL,
+      replyToToken TEXT,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (orderId) REFERENCES orders(id) ON DELETE CASCADE,
+      FOREIGN KEY (adminId) REFERENCES users(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
     CREATE INDEX IF NOT EXISTS idx_cart_user ON cart_items(userId);
     CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(userId);
+    CREATE INDEX IF NOT EXISTS idx_order_communications ON order_communications(orderId);
+    CREATE INDEX IF NOT EXISTS idx_order_communications_token ON order_communications(replyToToken);
   `);
 
   // Migration: Add new columns if they don't exist
@@ -209,6 +226,13 @@ export function initializeDatabase() {
     db.exec(`CREATE INDEX IF NOT EXISTS idx_order_notes ON order_notes(orderId);`);
   } catch (e) {
     // Index might already exist
+  }
+
+  // Migration: Add attachments column to order_communications
+  try {
+    db.exec(`ALTER TABLE order_communications ADD COLUMN attachments TEXT`);
+  } catch (e) {
+    // Column already exists
   }
 
   console.log('Database initialized successfully');

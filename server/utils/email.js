@@ -99,24 +99,26 @@ export async function sendOrderConfirmationEmail(order, user) {
 
   // Customer email (simplified)
   const customerEmailContent = `
-Order Confirmation - Order #${order.id.toString().slice(0, 8).toUpperCase()}
+Order Confirmation - ${order.orderNumber}
 
 Thank you for your order!
 
-School: ${shippingInfo.schoolName}
+${shippingInfo.isInternalOrder ? `Contact: ${shippingInfo.contactName}
+Department: ${shippingInfo.department || 'N/A'}` : `School: ${shippingInfo.schoolName}
 Contact: ${shippingInfo.contactName}
-Position: ${shippingInfo.positionTitle || 'N/A'}
+Position: ${shippingInfo.positionTitle || 'N/A'}`}
 Email: ${shippingInfo.email}
-Phone: ${shippingInfo.phone}
+Phone: ${shippingInfo.phone}${shippingInfo.additionalEmails && shippingInfo.additionalEmails.length > 0 ? `
+Also CC'd: ${shippingInfo.additionalEmails.join(', ')}` : ''}
 
 Items Ordered:
-${order.items.map(item => `- ${item.name} (Qty: ${item.quantity}) - $${(item.price * item.quantity).toFixed(2)}`).join('\n')}
+${order.items.map(item => `- ${item.name}${item.quantity ? ` (Qty: ${item.quantity})` : ''}${item.price ? ` - $${(item.price * (item.quantity || 1)).toFixed(2)}` : ''}`).join('\n')}
 
-Order Total: $${order.total.toFixed(2)}
+${order.total ? `Order Total: $${order.total.toFixed(2)}` : ''}
 
 ${order.notes ? `Special Instructions: ${order.notes}` : ''}
 
-Your order has been received and is being processed. We will send you a proof for approval before printing.
+Your order has been received and is being processed. We will reach out if we have any questions.
 
 Thank you for choosing AcademicaMart!
   `.trim();
@@ -127,18 +129,21 @@ Thank you for choosing AcademicaMart!
 NEW ORDER RECEIVED
 ============================================================
 
-Order #${order.id.toString().slice(0, 8).toUpperCase()}
+Order: ${order.orderNumber}
 Date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
 
 ============================================================
-SCHOOL INFORMATION
+${shippingInfo.isInternalOrder ? 'CONTACT INFORMATION' : 'SCHOOL INFORMATION'}
 ============================================================
-School Name: ${shippingInfo.schoolName}
+${shippingInfo.isInternalOrder ? `Contact Name: ${shippingInfo.contactName}
+Department: ${shippingInfo.department || 'N/A'}` : `School Name: ${shippingInfo.schoolName}
 Contact Name: ${shippingInfo.contactName}
 Position/Title: ${shippingInfo.positionTitle || 'N/A'}
-Principal's Name: ${shippingInfo.principalName || 'N/A'}
+Principal's Name: ${shippingInfo.principalName || 'N/A'}`}
 Email: ${shippingInfo.email}
-Phone: ${shippingInfo.phone}
+Phone: ${shippingInfo.phone}${shippingInfo.additionalEmails && shippingInfo.additionalEmails.length > 0 ? `
+CC Recipients: ${shippingInfo.additionalEmails.join(', ')}` : ''}${shippingInfo.isInternalOrder ? `
+Type: Internal Academica Order` : ''}
 
 ============================================================
 ORDER ITEMS (${order.items.length} item${order.items.length > 1 ? 's' : ''})
@@ -163,14 +168,21 @@ User Email: ${user.email}
 User ID: ${user.id}
   `.trim();
 
-  // Send to customer
+  // Send to customer (with CC to additional emails if any)
   try {
-    await transporter.sendMail({
+    const mailOptions = {
       from: process.env.EMAIL_USER,
       to: shippingInfo.email,
-      subject: `Order Confirmation - Order #${order.id.toString().slice(0, 8).toUpperCase()}`,
+      subject: `[Order ${order.orderNumber}] Order Confirmation`,
       text: customerEmailContent,
-    });
+    };
+
+    // Add CC recipients if additional emails exist
+    if (shippingInfo.additionalEmails && shippingInfo.additionalEmails.length > 0) {
+      mailOptions.cc = shippingInfo.additionalEmails;
+    }
+
+    await transporter.sendMail(mailOptions);
   } catch (error) {
     console.error('Failed to send customer email:', error.message);
   }
@@ -180,7 +192,7 @@ User ID: ${user.id}
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
-      subject: `[NEW ORDER] #${order.id.toString().slice(0, 8).toUpperCase()} - ${shippingInfo.schoolName}`,
+      subject: `[NEW ORDER] ${order.orderNumber} - ${shippingInfo.isInternalOrder ? shippingInfo.contactName : shippingInfo.schoolName}`,
       text: adminEmailContent,
     });
   } catch (error) {

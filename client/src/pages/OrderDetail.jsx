@@ -100,25 +100,72 @@ export default function OrderDetail() {
           {/* Items */}
           <h3 className="font-semibold text-gray-900 mb-4">Order Items</h3>
           <div className="space-y-3 mb-6">
-            {order.items.map((item, index) => (
-              <div key={index} className="py-3 border-b border-gray-100 last:border-0">
-                <p className="font-medium text-gray-900">{item.name}</p>
-                <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
-              </div>
-            ))}
+            {order.items.map((item, index) => {
+              const opts = item.selectedOptions || item.options || {};
+              return (
+                <div key={index} className="py-3 border-b border-gray-100 last:border-0">
+                  <p className="font-medium text-gray-900">{item.name}</p>
+                  {Object.keys(opts).length > 0 && (
+                    <div className="text-sm text-gray-500 mt-1 space-y-0.5">
+                      {Object.entries(opts).map(([key, value]) => {
+                        if (!value || key === 'customText' || key === 'artworkOption') return null;
+                        const label = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
+                        return <p key={key}>{label}: {value}</p>;
+                      })}
+                      {opts.artworkOption && (
+                        <p>Artwork: {opts.artworkOption === 'use_existing' ? 'Use existing artwork' : opts.artworkOption === 'send_later' ? 'Will send later' : opts.artworkOption.replace(/-/g, ' ')}</p>
+                      )}
+                      {opts.customText && typeof opts.customText === 'object' && (
+                        <>
+                          {opts.customText.headline && <p>Headline: {opts.customText.headline}</p>}
+                          {opts.customText.subheadline && <p>Subheadline: {opts.customText.subheadline}</p>}
+                          {opts.customText.bodyText && <p>Body Text: {opts.customText.bodyText}</p>}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Shipping Info */}
+      {/* Contact Info */}
       <div className="bg-white rounded-lg shadow-sm p-6 mt-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Shipping Information</h3>
+        <h3 className="font-semibold text-gray-900 mb-4">
+          {order.shippingInfo?.isInternalOrder ? 'Contact Information' : 'School Information'}
+        </h3>
         <div className="text-gray-600">
-          <p className="font-medium text-gray-900">{order.shippingInfo.contactName}</p>
-          <p>{order.shippingInfo.address}</p>
-          <p>{order.shippingInfo.city}, {order.shippingInfo.state} {order.shippingInfo.zipCode}</p>
-          <p className="mt-3">{order.shippingInfo.phone}</p>
-          <p>{order.shippingInfo.email}</p>
+          {order.shippingInfo?.isInternalOrder ? (
+            <>
+              <p className="font-medium text-gray-900">{order.shippingInfo.contactName}</p>
+              {order.shippingInfo.department && <p>Department: {order.shippingInfo.department}</p>}
+              <p className="mt-3">{order.shippingInfo.phone}</p>
+              <p>{order.shippingInfo.email}</p>
+              {order.shippingInfo.additionalEmails?.length > 0 && (
+                <p className="mt-1 text-sm text-gray-500">
+                  Also CC'd: {order.shippingInfo.additionalEmails.join(', ')}
+                </p>
+              )}
+              <p className="mt-2 text-sm text-purple-600 font-medium">Internal Academica Order</p>
+            </>
+          ) : (
+            <>
+              {order.shippingInfo?.schoolName && (
+                <p className="font-medium text-gray-900">{order.shippingInfo.schoolName}</p>
+              )}
+              <p>{order.shippingInfo?.contactName}</p>
+              {order.shippingInfo?.positionTitle && <p>{order.shippingInfo.positionTitle}</p>}
+              <p className="mt-3">{order.shippingInfo?.phone}</p>
+              <p>{order.shippingInfo?.email}</p>
+              {order.shippingInfo?.additionalEmails?.length > 0 && (
+                <p className="mt-1 text-sm text-gray-500">
+                  Also CC'd: {order.shippingInfo.additionalEmails.join(', ')}
+                </p>
+              )}
+            </>
+          )}
         </div>
       </div>
 

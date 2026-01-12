@@ -146,6 +146,16 @@ export const Order = {
     return Order.findById(id);
   },
 
+  updateItems: (id, items) => {
+    // Recalculate total based on items
+    const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+    const stmt = db.prepare('UPDATE orders SET items = ?, total = ? WHERE id = ?');
+    stmt.run(JSON.stringify(items), total, id);
+
+    return Order.findById(id);
+  },
+
   count: () => {
     const stmt = db.prepare('SELECT COUNT(*) as count FROM orders');
     return stmt.get().count;

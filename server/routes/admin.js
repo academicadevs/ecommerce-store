@@ -1,11 +1,47 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import { Product } from '../models/Product.js';
 import { Order } from '../models/Order.js';
+import { OrderCommunication } from '../models/OrderCommunication.js';
 import { User } from '../models/User.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 import { seedAll } from '../scripts/seedAll.js';
+import { sendOrderEmail } from '../utils/sendgrid.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const router = express.Router();
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, '../uploads'));
+  },
+  filename: (req, file, cb) => {
+    const uniqueId = uuidv4();
+    const ext = path.extname(file.originalname);
+    cb(null, `${uniqueId}${ext}`);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx|ppt|pptx|txt/;
+    const ext = path.extname(file.originalname).toLowerCase().slice(1);
+    if (allowedTypes.test(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  }
+});
 
 // All admin routes require authentication and admin role
 router.use(authenticate);
@@ -212,6 +248,135 @@ router.delete('/orders/notes/:noteId', (req, res) => {
   } catch (error) {
     console.error('Error deleting note:', error);
     res.status(500).json({ error: 'Failed to delete note' });
+  }
+});
+
+// Update order items
+router.put('/orders/:id/items', (req, res) => {
+  try {
+    const { items } = req.body;
+
+    if (!items || !Array.isArray(items)) {
+      return res.status(400).json({ error: 'Items array is required' });
+    }
+
+    const order = Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const updatedOrder = Order.updateItems(req.params.id, items);
+    res.json({ message: 'Order items updated', order: updatedOrder });
+  } catch (error) {
+    console.error('Error updating order items:', error);
+    res.status(500).json({ error: 'Failed to update order items' });
+  }
+});
+
+// Order communications
+router.get('/orders/:id/communications', (req, res) => {
+  try {
+    const order = Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const communications = OrderCommunication.getByOrderId(req.params.id);
+    res.json({ communications });
+  } catch (error) {
+    console.error('Error fetching communications:', error);
+    res.status(500).json({ error: 'Failed to fetch communications' });
+  }
+});
+
+// Send email to customer (with attachments)
+router.post('/orders/:id/email', upload.array('attachments', 10), async (req, res) => {
+  try {
+    const { subject, body } = req.body;
+
+    if (!subject || !body) {
+      return res.status(400).json({ error: 'Subject and body are required' });
+    }
+
+    const order = Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Get customer email from shippingInfo
+    const customerEmail = order.shippingInfo?.email;
+    if (!customerEmail) {
+      return res.status(400).json({ error: 'Customer email not found in order' });
+    }
+
+    // Process uploaded files
+    const attachments = req.files?.map(file => ({
+      id: path.basename(file.filename, path.extname(file.filename)),
+      filename: file.originalname,
+      storedName: file.filename,
+      type: file.mimetype,
+      size: file.size,
+      path: `/api/admin/attachments/${file.filename}`
+    })) || [];
+
+    // Generate reply token for routing inbound emails
+    const replyToToken = OrderCommunication.generateReplyToken(req.params.id);
+
+    // Send email via SendGrid
+    const emailResult = await sendOrderEmail({
+      to: customerEmail,
+      subject,
+      body,
+      order,
+      replyToToken,
+      attachments: req.files
+    });
+
+    if (!emailResult.success) {
+      return res.status(500).json({ error: emailResult.error || 'Failed to send email' });
+    }
+
+    // Record the communication with attachments
+    const communication = OrderCommunication.create({
+      orderId: req.params.id,
+      direction: 'outbound',
+      adminId: req.user.id,
+      senderEmail: emailResult.from,
+      recipientEmail: customerEmail,
+      subject,
+      body,
+      replyToToken,
+      attachments: attachments.length > 0 ? attachments : null
+    });
+
+    res.json({ message: 'Email sent', communication });
+  } catch (error) {
+    console.error('Error sending email:', error);
+    res.status(500).json({ error: 'Failed to send email' });
+  }
+});
+
+// Serve attachments
+router.get('/attachments/:filename', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const filePath = path.join(__dirname, '../uploads', filename);
+    res.sendFile(filePath);
+  } catch (error) {
+    console.error('Error serving attachment:', error);
+    res.status(404).json({ error: 'Attachment not found' });
+  }
+});
+
+// Download attachment
+router.get('/attachments/:filename/download', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const filePath = path.join(__dirname, '../uploads', filename);
+    res.download(filePath);
+  } catch (error) {
+    console.error('Error downloading attachment:', error);
+    res.status(404).json({ error: 'Attachment not found' });
   }
 });
 

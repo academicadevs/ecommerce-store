@@ -78,6 +78,19 @@ export const adminAPI = {
   getOrderNotes: (id) => api.get(`/admin/orders/${id}/notes`),
   addOrderNote: (id, note) => api.post(`/admin/orders/${id}/notes`, { note }),
   deleteOrderNote: (noteId) => api.delete(`/admin/orders/notes/${noteId}`),
+  updateOrderItems: (id, items) => api.put(`/admin/orders/${id}/items`, { items }),
+  getOrderCommunications: (id) => api.get(`/admin/orders/${id}/communications`),
+  sendOrderEmail: (id, subject, body, attachments = []) => {
+    const formData = new FormData();
+    formData.append('subject', subject);
+    formData.append('body', body);
+    attachments.forEach(att => {
+      formData.append('attachments', att.file);
+    });
+    return api.post(`/admin/orders/${id}/email`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
   // Admins
   getAdmins: () => api.get('/admin/admins'),
   // Users
