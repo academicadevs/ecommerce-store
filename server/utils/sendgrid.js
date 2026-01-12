@@ -454,6 +454,19 @@ export async function sendProofEmail({ to, cc, order, proof, proofUrl }) {
     const random = Math.random().toString(36).substring(2, 10);
     const messageId = `<${timestamp}.${random}.proof@academicamart.com>`;
 
+    // Build proof message body
+    const proofMessage = `Hi ${firstName},
+
+A proof is ready for your review: ${proof.title || `Version ${proof.version}`}
+
+Please review the design and provide any feedback or approve it for production:
+${proofUrl}
+
+This link expires in 60 days.
+
+Best regards,
+AcademicaMart Team`;
+
     const msg = {
       to,
       from: {
@@ -462,8 +475,8 @@ export async function sendProofEmail({ to, cc, order, proof, proofUrl }) {
       },
       replyTo: config.fromEmail,
       subject: `Proof Ready for Review - Order #${orderNumber}`,
-      text: generateProofPlainText(firstName, orderNumber, proof, proofUrl),
-      html: generateProofHtml(firstName, orderNumber, proof, proofUrl),
+      text: generatePlainTextEmail(proofMessage, order, true),
+      html: generateHtmlEmail(proofMessage, order, true),
       headers: {
         'Message-ID': messageId
       }
@@ -484,90 +497,6 @@ export async function sendProofEmail({ to, cc, order, proof, proofUrl }) {
       error: error.response?.body?.errors?.[0]?.message || error.message
     };
   }
-}
-
-function generateProofPlainText(firstName, orderNumber, proof, proofUrl) {
-  return `
-Hi ${firstName},
-
-A proof is ready for your review for Order #${orderNumber}.
-
-Proof: ${proof.title || `Version ${proof.version}`}
-
-To review and approve your proof, please visit:
-${proofUrl}
-
-You can click on areas of the design to leave feedback, or approve it when satisfied.
-
-This link expires in 60 days. Reply to this email with any questions.
-
-Best regards,
-Academica Design Dept.
-  `.trim();
-}
-
-function generateProofHtml(firstName, orderNumber, proof, proofUrl) {
-  // Use a simpler template that matches order emails to avoid spam filters
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Proof Ready for Review</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: ${systemFontStack};">
-  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f3f4f6;">
-    <tr>
-      <td style="padding: 30px 20px;">
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 640px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-
-          <!-- Header -->
-          <tr>
-            <td style="background-color: #1e40af; padding: 24px 32px; border-radius: 8px 8px 0 0;">
-              <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #ffffff;">AcademicaMart</h1>
-              <p style="margin: 4px 0 0 0; font-family: ${systemFontStack}; font-size: 14px; color: rgba(255,255,255,0.9);">Order #${orderNumber}</p>
-            </td>
-          </tr>
-
-          <!-- Content -->
-          <tr>
-            <td style="padding: 32px;">
-              <p style="margin: 0 0 20px 0; font-family: ${systemFontStack}; font-size: 16px; color: #374151;">
-                Hi ${escapeHtml(firstName)},
-              </p>
-              <p style="margin: 0 0 16px 0; font-family: ${systemFontStack}; font-size: 15px; line-height: 1.6; color: #374151;">
-                A proof is ready for your review: <strong>${escapeHtml(proof.title || `Version ${proof.version}`)}</strong>
-              </p>
-              <p style="margin: 0 0 16px 0; font-family: ${systemFontStack}; font-size: 15px; line-height: 1.6; color: #374151;">
-                Please review the design and provide any feedback or approve it for production.
-              </p>
-              <p style="margin: 0 0 24px 0; font-family: ${systemFontStack}; font-size: 15px; line-height: 1.6; color: #374151;">
-                <strong>Review your proof here:</strong><br>
-                <a href="${proofUrl}" style="color: #1e40af; text-decoration: underline;">${proofUrl}</a>
-              </p>
-              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;">
-                This link expires in 60 days. Reply to this email with any questions.
-              </p>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #f9fafb; padding: 20px 32px; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;">
-                <strong>Simply reply to this email to respond.</strong>
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `;
 }
 
 export default { sendOrderEmail, sendProofEmail };
