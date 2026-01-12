@@ -80,10 +80,11 @@ export const adminAPI = {
   deleteOrderNote: (noteId) => api.delete(`/admin/orders/notes/${noteId}`),
   updateOrderItems: (id, items) => api.put(`/admin/orders/${id}/items`, { items }),
   getOrderCommunications: (id) => api.get(`/admin/orders/${id}/communications`),
-  sendOrderEmail: (id, subject, body, attachments = []) => {
+  sendOrderEmail: (id, subject, body, attachments = [], includeOrderDetails = true) => {
     const formData = new FormData();
     formData.append('subject', subject);
     formData.append('body', body);
+    formData.append('includeOrderDetails', includeOrderDetails.toString());
     attachments.forEach(att => {
       formData.append('attachments', att.file);
     });

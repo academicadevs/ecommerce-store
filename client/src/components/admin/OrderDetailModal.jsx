@@ -129,10 +129,10 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
     }
   };
 
-  const handleSendEmail = async ({ subject, body, attachments = [] }) => {
+  const handleSendEmail = async ({ subject, body, attachments = [], includeOrderDetails = true }) => {
     setSendingEmail(true);
     try {
-      await adminAPI.sendOrderEmail(order.id, subject, body, attachments);
+      await adminAPI.sendOrderEmail(order.id, subject, body, attachments, includeOrderDetails);
       loadCommunications();
       return true;
     } catch (error) {

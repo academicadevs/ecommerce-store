@@ -292,7 +292,7 @@ router.get('/orders/:id/communications', (req, res) => {
 // Send email to customer (with attachments)
 router.post('/orders/:id/email', upload.array('attachments', 10), async (req, res) => {
   try {
-    const { subject, body } = req.body;
+    const { subject, body, includeOrderDetails } = req.body;
 
     if (!subject || !body) {
       return res.status(400).json({ error: 'Subject and body are required' });
@@ -329,7 +329,8 @@ router.post('/orders/:id/email', upload.array('attachments', 10), async (req, re
       body,
       order,
       replyToToken,
-      attachments: req.files
+      attachments: req.files,
+      includeOrderDetails: includeOrderDetails !== 'false'
     });
 
     if (!emailResult.success) {

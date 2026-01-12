@@ -35,7 +35,7 @@ const systemFontStack = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 
  * @param {Array} options.attachments - File attachments
  * @returns {Promise<{success: boolean, from?: string, error?: string}>}
  */
-export async function sendOrderEmail({ to, subject, body, order, replyToToken, attachments }) {
+export async function sendOrderEmail({ to, subject, body, order, replyToToken, attachments, includeOrderDetails = true }) {
   const config = getConfig();
   const orderNumber = order.orderNumber;
 
@@ -45,7 +45,7 @@ export async function sendOrderEmail({ to, subject, body, order, replyToToken, a
   if (!config.apiKey) {
     console.warn('SENDGRID_API_KEY not configured - email not sent');
     // In development, log the email and return success for testing
-    console.log('Would send email:', { to, cc: ccEmails, subject, body: generatePlainTextEmail(body, order), orderNumber, replyToToken, attachments: attachments?.length || 0 });
+    console.log('Would send email:', { to, cc: ccEmails, subject, body: generatePlainTextEmail(body, order, includeOrderDetails), orderNumber, replyToToken, attachments: attachments?.length || 0 });
     return {
       success: true,
       from: config.fromEmail,
@@ -69,8 +69,8 @@ export async function sendOrderEmail({ to, subject, body, order, replyToToken, a
       },
       replyTo: replyToAddress,
       subject: subject,
-      text: generatePlainTextEmail(body, order),
-      html: generateHtmlEmail(body, order)
+      text: generatePlainTextEmail(body, order, includeOrderDetails),
+      html: generateHtmlEmail(body, order, includeOrderDetails)
     };
 
     // Add CC recipients if any
@@ -105,7 +105,11 @@ export async function sendOrderEmail({ to, subject, body, order, replyToToken, a
 /**
  * Generate plain text version of email with order details
  */
-function generatePlainTextEmail(body, order) {
+function generatePlainTextEmail(body, order, includeOrderDetails = true) {
+  if (!includeOrderDetails) {
+    return body;
+  }
+
   const shipping = order.shippingInfo || {};
   const items = order.items || [];
 
@@ -169,7 +173,7 @@ function generatePlainTextEmail(body, order) {
 /**
  * Generate professional HTML email with proper tables
  */
-function generateHtmlEmail(body, order) {
+function generateHtmlEmail(body, order, includeOrderDetails = true) {
   const shipping = order.shippingInfo || {};
   const items = order.items || [];
 
@@ -179,6 +183,47 @@ function generateHtmlEmail(body, order) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/\n/g, '<br>');
+
+  // Simple message-only email if order details not included
+  if (!includeOrderDetails) {
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Message from AcademicaMart</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: ${systemFontStack};">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f3f4f6;">
+    <tr>
+      <td style="padding: 30px 20px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 640px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="background-color: #1e40af; padding: 24px 32px; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #ffffff;">AcademicaMart</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 32px;">
+              <div style="font-family: ${systemFontStack}; font-size: 15px; line-height: 1.6; color: #374151;">
+                ${escapedBody}
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f9fafb; padding: 20px 32px; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;"><strong>Simply reply to this email to respond.</strong></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+  }
 
   // Build order items rows
   let itemsHtml = '';

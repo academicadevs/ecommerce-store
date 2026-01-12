@@ -12,14 +12,26 @@ const upload = multer();
 // This receives emails when customers reply to order emails
 router.post('/sendgrid/inbound', upload.none(), (req, res) => {
   try {
-    const { to, from, subject, text, html } = req.body;
+    const { to, from, subject, text, html, envelope } = req.body;
 
+    // Log all available fields for debugging
     console.log('Received inbound email:', { to, from, subject });
+    console.log('Body content - text length:', text?.length || 0, 'html length:', html?.length || 0);
 
     // Validate required fields
     if (!to) {
       console.log('Missing "to" field in webhook data. Body keys:', Object.keys(req.body));
       return res.status(200).json({ message: 'Missing to address' });
+    }
+
+    // Parse envelope if available (contains parsed sender/recipient info)
+    let parsedEnvelope = null;
+    if (envelope) {
+      try {
+        parsedEnvelope = JSON.parse(envelope);
+      } catch (e) {
+        console.log('Could not parse envelope:', e.message);
+      }
     }
 
     // Parse the reply token from the "to" address
@@ -47,8 +59,26 @@ router.post('/sendgrid/inbound', upload.none(), (req, res) => {
       return res.status(200).json({ message: 'Order not found' });
     }
 
-    // Use text body, falling back to stripping HTML
-    const bodyContent = text || (html ? html.replace(/<[^>]*>/g, '') : '');
+    // Extract email body - try multiple sources
+    let bodyContent = '';
+    if (text && text.trim()) {
+      // Use plain text if available
+      bodyContent = text.trim();
+    } else if (html) {
+      // Strip HTML tags and decode entities
+      bodyContent = html
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n\n')
+        .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .trim();
+    }
+
+    console.log('Extracted body content:', bodyContent.substring(0, 200));
 
     // Record the inbound communication
     const communication = OrderCommunication.create({
