@@ -3,6 +3,7 @@ import Modal from '../common/Modal';
 import OrderItemEditor from './OrderItemEditor';
 import CommunicationFeed from './CommunicationFeed';
 import EmailComposer from './EmailComposer';
+import ProofManager from './ProofManager';
 import { adminAPI } from '../../services/api';
 
 const statusOptions = ['new', 'waiting_feedback', 'in_progress', 'on_hold', 'waiting_signoff', 'sent_to_print', 'completed'];
@@ -30,19 +31,23 @@ const statusLabels = {
 export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, admins, user }) {
   const [notes, setNotes] = useState([]);
   const [communications, setCommunications] = useState([]);
+  const [proofs, setProofs] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [loadingComms, setLoadingComms] = useState(false);
+  const [loadingProofs, setLoadingProofs] = useState(false);
   const [addingNote, setAddingNote] = useState(false);
   const [savingItems, setSavingItems] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [updatingAssignment, setUpdatingAssignment] = useState(false);
+  const [activeTab, setActiveTab] = useState('communications'); // 'communications' or 'proofs'
 
   useEffect(() => {
     if (isOpen && order) {
       loadNotes();
       loadCommunications();
+      loadProofs();
     }
   }, [isOpen, order?.id]);
 
@@ -69,6 +74,19 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
       console.error('Failed to load communications:', error);
     } finally {
       setLoadingComms(false);
+    }
+  };
+
+  const loadProofs = async () => {
+    if (!order) return;
+    setLoadingProofs(true);
+    try {
+      const response = await adminAPI.getOrderProofs(order.id);
+      setProofs(response.data.proofs || []);
+    } catch (error) {
+      console.error('Failed to load proofs:', error);
+    } finally {
+      setLoadingProofs(false);
     }
   };
 
@@ -394,35 +412,83 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
             </div>
           </div>
 
-          {/* Column 3: Communications */}
+          {/* Column 3: Communications & Proofs */}
           <div>
-            <h3 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-academica-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              Email Communications
-            </h3>
+            {/* Tab Headers */}
+            <div className="flex border-b border-gray-200 mb-4">
+              <button
+                onClick={() => setActiveTab('communications')}
+                className={`flex items-center gap-2 px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+                  activeTab === 'communications'
+                    ? 'border-academica-blue text-academica-blue'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                Communications
+              </button>
+              <button
+                onClick={() => setActiveTab('proofs')}
+                className={`flex items-center gap-2 px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+                  activeTab === 'proofs'
+                    ? 'border-purple-600 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Proofs
+                {proofs.length > 0 && (
+                  <span className="bg-purple-100 text-purple-700 text-xs px-1.5 py-0.5 rounded-full">
+                    {proofs.length}
+                  </span>
+                )}
+              </button>
+            </div>
 
-            {/* Email Composer */}
-            {customerEmail && (
-              <div className="mb-4">
-                <EmailComposer
-                  recipientEmail={customerEmail}
+            {/* Communications Tab */}
+            {activeTab === 'communications' && (
+              <>
+                {/* Email Composer */}
+                {customerEmail && (
+                  <div className="mb-4">
+                    <EmailComposer
+                      recipientEmail={customerEmail}
+                      orderNumber={order.orderNumber}
+                      order={order}
+                      onSend={handleSendEmail}
+                      sending={sendingEmail}
+                    />
+                  </div>
+                )}
+
+                {/* Communication Feed */}
+                <div className="max-h-[calc(90vh-400px)] overflow-y-auto">
+                  <CommunicationFeed
+                    communications={communications}
+                    loading={loadingComms}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Proofs Tab */}
+            {activeTab === 'proofs' && (
+              <div className="max-h-[calc(90vh-350px)] overflow-y-auto">
+                <ProofManager
+                  orderId={order.id}
                   orderNumber={order.orderNumber}
-                  order={order}
-                  onSend={handleSendEmail}
-                  sending={sendingEmail}
+                  proofs={proofs}
+                  onUpdate={() => {
+                    loadProofs();
+                    loadCommunications();
+                  }}
                 />
               </div>
             )}
-
-            {/* Communication Feed */}
-            <div className="max-h-[calc(90vh-400px)] overflow-y-auto">
-              <CommunicationFeed
-                communications={communications}
-                loading={loadingComms}
-              />
-            </div>
           </div>
         </div>
       </div>

@@ -101,6 +101,21 @@ export const adminAPI = {
   updateUserRole: (id, role) => api.put(`/admin/users/${id}/role`, { role }),
   updateUserType: (id, userType) => api.put(`/admin/users/${id}/userType`, { userType }),
   getUserOrders: (userId) => api.get(`/admin/users/${userId}/orders`),
+  // Proofs
+  getOrderProofs: (orderId) => api.get(`/proofs/order/${orderId}`),
+  uploadProof: (formData) => api.post('/proofs/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  deleteProof: (proofId) => api.delete(`/proofs/${proofId}`),
+  resolveAnnotation: (annotationId) => api.post(`/proofs/annotations/${annotationId}/resolve`),
+};
+
+// Public Proofs API (no auth required)
+export const proofsAPI = {
+  getByToken: (accessToken) => api.get(`/proofs/review/${accessToken}`),
+  addAnnotation: (accessToken, data) => api.post(`/proofs/review/${accessToken}/annotate`, data),
+  deleteAnnotation: (accessToken, annotationId) => api.delete(`/proofs/review/${accessToken}/annotations/${annotationId}`),
+  signOff: (accessToken, data) => api.post(`/proofs/review/${accessToken}/signoff`, data),
 };
 
 export default api;

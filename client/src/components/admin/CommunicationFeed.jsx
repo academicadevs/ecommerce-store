@@ -56,10 +56,15 @@ export default function CommunicationFeed({ communications, loading }) {
     );
   }
 
+  // Sort communications with newest first
+  const sortedCommunications = [...communications].sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  );
+
   return (
     <>
       <div className="space-y-4">
-        {communications.map((comm) => (
+        {sortedCommunications.map((comm) => (
           <div
             key={comm.id}
             className={`rounded-lg p-4 ${

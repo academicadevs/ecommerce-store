@@ -1,13 +1,25 @@
 import sgMail from '@sendgrid/mail';
 
-// Initialize SendGrid with API key
-const apiKey = process.env.SENDGRID_API_KEY;
-if (apiKey) {
-  sgMail.setApiKey(apiKey);
+// SendGrid is initialized lazily to ensure env vars are loaded
+let sgInitialized = false;
+
+function initSendGrid() {
+  if (sgInitialized) return;
+  const apiKey = process.env.SENDGRID_API_KEY;
+  if (apiKey) {
+    sgMail.setApiKey(apiKey);
+    sgInitialized = true;
+  }
 }
 
-const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'orders@academicamart.com';
-const inboundDomain = process.env.SENDGRID_INBOUND_DOMAIN || 'parse.academicamart.com';
+function getConfig() {
+  return {
+    apiKey: process.env.SENDGRID_API_KEY,
+    fromEmail: process.env.SENDGRID_FROM_EMAIL || 'orders@academicamart.com',
+    fromName: process.env.SENDGRID_FROM_NAME || 'Academica Design Dept.',
+    inboundDomain: process.env.SENDGRID_INBOUND_DOMAIN || 'parse.academicamart.com'
+  };
+}
 
 // System font stack - uses native fonts on each platform
 const systemFontStack = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
@@ -24,32 +36,36 @@ const systemFontStack = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 
  * @returns {Promise<{success: boolean, from?: string, error?: string}>}
  */
 export async function sendOrderEmail({ to, subject, body, order, replyToToken, attachments }) {
+  const config = getConfig();
   const orderNumber = order.orderNumber;
 
   // Get CC recipients from order's additionalEmails
   const ccEmails = order.shippingInfo?.additionalEmails || [];
 
-  if (!apiKey) {
+  if (!config.apiKey) {
     console.warn('SENDGRID_API_KEY not configured - email not sent');
     // In development, log the email and return success for testing
     console.log('Would send email:', { to, cc: ccEmails, subject, body: generatePlainTextEmail(body, order), orderNumber, replyToToken, attachments: attachments?.length || 0 });
     return {
       success: true,
-      from: fromEmail,
+      from: config.fromEmail,
       dev: true
     };
   }
 
+  // Initialize SendGrid
+  initSendGrid();
+
   try {
     // Create unique reply-to address for routing inbound emails
     // Format: order-{token}@parse.yourdomain.com
-    const replyToAddress = `order-${replyToToken.replace('ord-', '')}@${inboundDomain}`;
+    const replyToAddress = `order-${replyToToken.replace('ord-', '')}@${config.inboundDomain}`;
 
     const msg = {
       to,
       from: {
-        email: fromEmail,
-        name: 'AcademicaMart Orders'
+        email: config.fromEmail,
+        name: config.fromName
       },
       replyTo: replyToAddress,
       subject: `[Order ${orderNumber}] ${subject}`,
@@ -76,7 +92,7 @@ export async function sendOrderEmail({ to, subject, body, order, replyToToken, a
     await sgMail.send(msg);
     console.log('Email sent successfully to:', to, ccEmails.length > 0 ? `(CC: ${ccEmails.join(', ')})` : '');
 
-    return { success: true, from: fromEmail, cc: ccEmails };
+    return { success: true, from: config.fromEmail, cc: ccEmails };
   } catch (error) {
     console.error('SendGrid error:', error.response?.body || error.message);
     return {
@@ -338,4 +354,165 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-export default { sendOrderEmail };
+/**
+ * Send proof notification email to customer
+ */
+export async function sendProofEmail({ to, order, proof, proofUrl }) {
+  const config = getConfig();
+  const shippingInfo = typeof order.shippingInfo === 'string'
+    ? JSON.parse(order.shippingInfo)
+    : order.shippingInfo;
+
+  const contactName = shippingInfo?.contactName || 'Valued Customer';
+  const firstName = contactName.split(' ')[0];
+  const orderNumber = order.orderNumber;
+
+  // Get CC recipients
+  const ccEmails = shippingInfo?.additionalEmails || [];
+
+  if (!config.apiKey) {
+    console.warn('SENDGRID_API_KEY not configured - proof email not sent');
+    console.log('Would send proof email:', { to, cc: ccEmails, orderNumber, proofUrl });
+    return { success: true, from: config.fromEmail, dev: true };
+  }
+
+  // Initialize SendGrid
+  initSendGrid();
+
+  try {
+    const msg = {
+      to,
+      from: {
+        email: config.fromEmail,
+        name: config.fromName
+      },
+      subject: `Proof Ready for Review - Order #${orderNumber}`,
+      text: generateProofPlainText(firstName, orderNumber, proof, proofUrl),
+      html: generateProofHtml(firstName, orderNumber, proof, proofUrl)
+    };
+
+    if (ccEmails.length > 0) {
+      msg.cc = ccEmails;
+    }
+
+    await sgMail.send(msg);
+    console.log('Proof email sent successfully to:', to);
+
+    return { success: true, from: config.fromEmail };
+  } catch (error) {
+    console.error('SendGrid error (proof):', error.response?.body || error.message);
+    return {
+      success: false,
+      error: error.response?.body?.errors?.[0]?.message || error.message
+    };
+  }
+}
+
+function generateProofPlainText(firstName, orderNumber, proof, proofUrl) {
+  return `
+Hi ${firstName},
+
+A proof is ready for your review!
+
+Order: #${orderNumber}
+Proof: ${proof.title || `Version ${proof.version}`}
+
+Please click the link below to review the proof and provide feedback or approve the design:
+
+${proofUrl}
+
+You can:
+- Click on specific areas of the design to leave feedback
+- Draw rectangles to highlight sections
+- Approve the proof when you're satisfied with the design
+
+This link will expire in 60 days.
+
+If you have any questions, simply reply to this email.
+
+Best regards,
+AcademicaMart Team
+  `.trim();
+}
+
+function generateProofHtml(firstName, orderNumber, proof, proofUrl) {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proof Ready for Review</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: ${systemFontStack};">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f3f4f6;">
+    <tr>
+      <td style="padding: 30px 20px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 640px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); padding: 24px 32px; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #ffffff;">Proof Ready for Review</h1>
+              <p style="margin: 4px 0 0 0; font-family: ${systemFontStack}; font-size: 14px; color: rgba(255,255,255,0.9);">Order #${orderNumber}</p>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 32px;">
+              <p style="margin: 0 0 20px 0; font-family: ${systemFontStack}; font-size: 16px; color: #374151;">
+                Hi ${escapeHtml(firstName)},
+              </p>
+              <p style="margin: 0 0 24px 0; font-family: ${systemFontStack}; font-size: 15px; line-height: 1.6; color: #374151;">
+                A proof is ready for your review! Please take a moment to review the design and provide any feedback or approve it for production.
+              </p>
+
+              <!-- Proof Info Box -->
+              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                <p style="margin: 0 0 8px 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;">PROOF DETAILS</p>
+                <p style="margin: 0; font-family: ${systemFontStack}; font-size: 18px; font-weight: 600; color: #111827;">${escapeHtml(proof.title || `Version ${proof.version}`)}</p>
+              </div>
+
+              <!-- CTA Button -->
+              <div style="text-align: center; margin: 32px 0;">
+                <a href="${proofUrl}" style="display: inline-block; background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: #ffffff; font-family: ${systemFontStack}; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px;">
+                  Review Proof
+                </a>
+              </div>
+
+              <!-- Instructions -->
+              <div style="border-top: 1px solid #e5e7eb; padding-top: 24px;">
+                <p style="margin: 0 0 12px 0; font-family: ${systemFontStack}; font-size: 14px; font-weight: 600; color: #111827;">What you can do:</p>
+                <ul style="margin: 0; padding: 0 0 0 20px; font-family: ${systemFontStack}; font-size: 14px; line-height: 1.8; color: #374151;">
+                  <li>Click on specific areas of the design to leave feedback</li>
+                  <li>Draw rectangles to highlight sections that need changes</li>
+                  <li>Approve the proof when you're satisfied with the design</li>
+                </ul>
+              </div>
+
+              <p style="margin: 24px 0 0 0; font-family: ${systemFontStack}; font-size: 13px; color: #9ca3af;">
+                This link will expire in 60 days. If you have questions, simply reply to this email.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 20px 32px; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280; text-align: center;">
+                AcademicaMart - Quality educational materials for Academica schools
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+export default { sendOrderEmail, sendProofEmail };

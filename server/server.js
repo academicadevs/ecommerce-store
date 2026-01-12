@@ -4,6 +4,12 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load environment variables from server/.env
+dotenv.config({ path: join(__dirname, '.env') });
+
 import { initializeDatabase } from './utils/database.js';
 import { Product } from './models/Product.js';
 import { User } from './models/User.js';
@@ -13,12 +19,7 @@ import cartRoutes from './routes/cart.js';
 import orderRoutes from './routes/orders.js';
 import adminRoutes from './routes/admin.js';
 import webhookRoutes from './routes/webhooks.js';
-
-// Load environment variables
-dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import proofRoutes from './routes/proofs.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -30,6 +31,9 @@ app.use(express.json());
 // Serve static files for product images (placeholder)
 app.use('/images', express.static(join(__dirname, 'public/images')));
 
+// Serve uploaded files (proofs, attachments)
+app.use('/uploads', express.static(join(__dirname, 'uploads')));
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
@@ -37,6 +41,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/proofs', proofRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -104,11 +104,54 @@ export function initializeDatabase() {
       FOREIGN KEY (adminId) REFERENCES users(id)
     );
 
+    CREATE TABLE IF NOT EXISTS proofs (
+      id TEXT PRIMARY KEY,
+      orderId TEXT NOT NULL,
+      orderItemId TEXT,
+      version INTEGER DEFAULT 1,
+      title TEXT,
+      fileUrl TEXT NOT NULL,
+      fileType TEXT,
+      status TEXT DEFAULT 'pending',
+      accessToken TEXT UNIQUE NOT NULL,
+      expiresAt TEXT NOT NULL,
+      signedOffAt TEXT,
+      signedOffBy TEXT,
+      signature TEXT,
+      signatureType TEXT,
+      createdBy TEXT NOT NULL,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (orderId) REFERENCES orders(id) ON DELETE CASCADE,
+      FOREIGN KEY (createdBy) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS proof_annotations (
+      id TEXT PRIMARY KEY,
+      proofId TEXT NOT NULL,
+      type TEXT NOT NULL,
+      x REAL NOT NULL,
+      y REAL NOT NULL,
+      width REAL,
+      height REAL,
+      page INTEGER DEFAULT 1,
+      comment TEXT NOT NULL,
+      authorName TEXT NOT NULL,
+      authorEmail TEXT,
+      resolved INTEGER DEFAULT 0,
+      resolvedAt TEXT,
+      resolvedBy TEXT,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (proofId) REFERENCES proofs(id) ON DELETE CASCADE
+    );
+
     CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
     CREATE INDEX IF NOT EXISTS idx_cart_user ON cart_items(userId);
     CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(userId);
     CREATE INDEX IF NOT EXISTS idx_order_communications ON order_communications(orderId);
     CREATE INDEX IF NOT EXISTS idx_order_communications_token ON order_communications(replyToToken);
+    CREATE INDEX IF NOT EXISTS idx_proofs_order ON proofs(orderId);
+    CREATE INDEX IF NOT EXISTS idx_proofs_token ON proofs(accessToken);
+    CREATE INDEX IF NOT EXISTS idx_proof_annotations ON proof_annotations(proofId);
   `);
 
   // Migration: Add new columns if they don't exist
