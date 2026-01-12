@@ -214,6 +214,31 @@ router.put('/orders/:id/assign', (req, res) => {
   }
 });
 
+// Update additional emails (CC recipients)
+router.put('/orders/:id/cc-emails', (req, res) => {
+  try {
+    const { additionalEmails } = req.body;
+
+    if (!Array.isArray(additionalEmails)) {
+      return res.status(400).json({ error: 'additionalEmails must be an array' });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const validEmails = additionalEmails.filter(email => emailRegex.test(email));
+
+    const order = Order.updateAdditionalEmails(req.params.id, validEmails);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    res.json({ message: 'CC emails updated', order });
+  } catch (error) {
+    console.error('Error updating CC emails:', error);
+    res.status(500).json({ error: 'Failed to update CC emails' });
+  }
+});
+
 // Order notes
 router.get('/orders/:id/notes', (req, res) => {
   try {

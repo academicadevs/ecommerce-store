@@ -9,6 +9,61 @@ const router = express.Router();
 // Multer for parsing multipart form data from SendGrid
 const upload = multer();
 
+/**
+ * Strip email signature and quoted reply text from email body
+ * Keeps only the new message content
+ */
+function stripSignatureAndQuotes(text) {
+  if (!text) return '';
+
+  const lines = text.split('\n');
+  const cleanLines = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmedLine = line.trim();
+
+    // Stop at signature delimiter (common patterns)
+    if (trimmedLine === '--' || trimmedLine === '-- ' || trimmedLine === '*—*' || trimmedLine === '---') {
+      break;
+    }
+
+    // Stop at "On [date], [name] wrote:" pattern (quoted reply header)
+    if (/^On .+ wrote:$/i.test(trimmedLine)) {
+      break;
+    }
+
+    // Stop at Gmail-style quote header
+    if (/^On .+at .+(AM|PM).+wrote:$/i.test(trimmedLine)) {
+      break;
+    }
+
+    // Stop at lines starting with ">" (quoted text)
+    if (trimmedLine.startsWith('>')) {
+      break;
+    }
+
+    // Stop at "From:" header (forwarded/quoted email)
+    if (/^From:\s*.+$/i.test(trimmedLine)) {
+      break;
+    }
+
+    // Stop at horizontal rules or separators often used before signatures
+    if (/^[-_=]{3,}$/.test(trimmedLine)) {
+      break;
+    }
+
+    cleanLines.push(line);
+  }
+
+  // Remove trailing empty lines
+  while (cleanLines.length > 0 && cleanLines[cleanLines.length - 1].trim() === '') {
+    cleanLines.pop();
+  }
+
+  return cleanLines.join('\n').trim();
+}
+
 // SendGrid Inbound Parse webhook
 // This receives emails when customers reply to order emails
 router.post('/sendgrid/inbound', upload.none(), async (req, res) => {
@@ -94,6 +149,9 @@ router.post('/sendgrid/inbound', upload.none(), async (req, res) => {
         .replace(/&quot;/g, '"')
         .trim();
     }
+
+    // Strip signature and quoted reply text
+    bodyContent = stripSignatureAndQuotes(bodyContent);
 
     console.log('Extracted body content:', bodyContent.substring(0, 200));
 

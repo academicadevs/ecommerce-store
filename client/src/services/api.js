@@ -79,6 +79,7 @@ export const adminAPI = {
   addOrderNote: (id, note) => api.post(`/admin/orders/${id}/notes`, { note }),
   deleteOrderNote: (noteId) => api.delete(`/admin/orders/notes/${noteId}`),
   updateOrderItems: (id, items) => api.put(`/admin/orders/${id}/items`, { items }),
+  updateCcEmails: (id, additionalEmails) => api.put(`/admin/orders/${id}/cc-emails`, { additionalEmails }),
   getOrderCommunications: (id) => api.get(`/admin/orders/${id}/communications`),
   sendOrderEmail: (id, subject, body, attachments = [], includeOrderDetails = true) => {
     const formData = new FormData();

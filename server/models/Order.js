@@ -156,6 +156,19 @@ export const Order = {
     return Order.findById(id);
   },
 
+  updateAdditionalEmails: (id, additionalEmails) => {
+    const order = Order.findById(id);
+    if (!order) return null;
+
+    const shippingInfo = order.shippingInfo || {};
+    shippingInfo.additionalEmails = additionalEmails;
+
+    const stmt = db.prepare('UPDATE orders SET shippingInfo = ? WHERE id = ?');
+    stmt.run(JSON.stringify(shippingInfo), id);
+
+    return Order.findById(id);
+  },
+
   count: () => {
     const stmt = db.prepare('SELECT COUNT(*) as count FROM orders');
     return stmt.get().count;
