@@ -17,7 +17,10 @@ function getConfig() {
     apiKey: process.env.SENDGRID_API_KEY,
     fromEmail: process.env.SENDGRID_FROM_EMAIL || 'orders@academicamart.com',
     fromName: process.env.SENDGRID_FROM_NAME || 'Academica Design Dept.',
-    inboundDomain: process.env.SENDGRID_INBOUND_DOMAIN || 'parse.academicamart.com'
+    inboundDomain: process.env.SENDGRID_INBOUND_DOMAIN || 'parse.academicamart.com',
+    companyAddress: '8670 W. Cheyenne Ave #120, Las Vegas, NV 89129',
+    companyPhone: '(702) 727-6262',
+    websiteUrl: 'https://academicamart.com'
   };
 }
 
@@ -25,33 +28,56 @@ function getConfig() {
 const systemFontStack = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 /**
- * Send an order-related email with unique reply-to for routing
- * @param {Object} options
- * @param {string} options.to - Recipient email
- * @param {string} options.subject - Email subject
- * @param {string} options.body - Email body (plain text message)
- * @param {Object} options.order - Full order object with details
- * @param {string} options.replyToToken - Token for routing replies (e.g., 'ord-a1b2c3d4')
- * @param {Array} options.attachments - File attachments
- * @param {Array} options.threadMessageIds - Previous message IDs for threading
- * @returns {Promise<{success: boolean, from?: string, messageId?: string, error?: string}>}
+ * Generate common email headers for deliverability
  */
-export async function sendOrderEmail({ to, subject, body, order, replyToToken, attachments, includeOrderDetails = true, threadMessageIds = [] }) {
-  const config = getConfig();
-  const orderNumber = order.orderNumber;
-
-  // Generate a unique Message-ID using UUID format for better deliverability
+async function generateEmailHeaders(config, replyToAddress) {
   const crypto = await import('crypto');
   const uuid = crypto.randomUUID();
   const messageId = `<${uuid}@academicamart.com>`;
 
+  return {
+    messageId,
+    uuid,
+    headers: {
+      'Message-ID': messageId,
+      'X-Entity-Ref-ID': uuid,
+      'X-Mailer': 'AcademicaMart-OrderSystem/1.0',
+      'Precedence': 'bulk',
+      'X-Auto-Response-Suppress': 'OOF, AutoReply',
+      // List-Unsubscribe header - critical for Microsoft deliverability
+      'List-Unsubscribe': `<mailto:${config.fromEmail}?subject=Unsubscribe>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
+    }
+  };
+}
+
+/**
+ * Get personalized greeting based on contact name
+ */
+function getPersonalizedGreeting(shippingInfo) {
+  const contactName = shippingInfo?.contactName || 'Valued Customer';
+  const firstName = contactName.split(' ')[0];
+  return { contactName, firstName };
+}
+
+/**
+ * Send an order-related email with unique reply-to for routing
+ */
+export async function sendOrderEmail({ to, subject, body, order, replyToToken, attachments, includeOrderDetails = true, threadMessageIds = [] }) {
+  const config = getConfig();
+  const orderNumber = order.orderNumber;
+  const shipping = order.shippingInfo || {};
+  const { firstName } = getPersonalizedGreeting(shipping);
+
+  // Generate headers for deliverability
+  const { messageId, uuid, headers } = await generateEmailHeaders(config);
+
   // Get CC recipients from order's additionalEmails
-  const ccEmails = order.shippingInfo?.additionalEmails || [];
+  const ccEmails = shipping.additionalEmails || [];
 
   if (!config.apiKey) {
     console.warn('SENDGRID_API_KEY not configured - email not sent');
-    // In development, log the email and return success for testing
-    console.log('Would send email:', { to, cc: ccEmails, subject, body: generatePlainTextEmail(body, order, includeOrderDetails), orderNumber, replyToToken, attachments: attachments?.length || 0, messageId, threadMessageIds });
+    console.log('Would send email:', { to, cc: ccEmails, subject, orderNumber, replyToToken, attachments: attachments?.length || 0, messageId });
     return {
       success: true,
       from: config.fromEmail,
@@ -65,7 +91,6 @@ export async function sendOrderEmail({ to, subject, body, order, replyToToken, a
 
   try {
     // Create unique reply-to address for routing inbound emails
-    // Format: order-{token}@parse.yourdomain.com
     const replyToAddress = `order-${replyToToken.replace('ord-', '')}@${config.inboundDomain}`;
 
     const msg = {
@@ -76,20 +101,14 @@ export async function sendOrderEmail({ to, subject, body, order, replyToToken, a
       },
       replyTo: replyToAddress,
       subject: subject,
-      text: generatePlainTextEmail(body, order, includeOrderDetails),
-      html: generateHtmlEmail(body, order, includeOrderDetails),
-      headers: {
-        'Message-ID': messageId,
-        'X-Entity-Ref-ID': uuid, // Unique identifier to prevent duplicate detection
-        'X-Mailer': 'AcademicaMart-OrderSystem'
-      }
+      text: generatePlainTextEmail(body, order, config, includeOrderDetails),
+      html: generateHtmlEmail(body, order, config, includeOrderDetails),
+      headers
     };
 
     // Add threading headers if there are previous messages (keeps emails in same thread)
     if (threadMessageIds && threadMessageIds.length > 0) {
-      // In-Reply-To: the most recent message in the thread
       msg.headers['In-Reply-To'] = threadMessageIds[threadMessageIds.length - 1];
-      // References: all previous messages in the thread
       msg.headers['References'] = threadMessageIds.join(' ');
     }
 
@@ -110,7 +129,7 @@ export async function sendOrderEmail({ to, subject, body, order, replyToToken, a
     }
 
     await sgMail.send(msg);
-    console.log('Email sent successfully to:', to, ccEmails.length > 0 ? `(CC: ${ccEmails.join(', ')})` : '');
+    console.log('Email sent successfully to:', to, ccEmails.length > 0 ? `(CC: ${ccEmails.join(', ')})` : '', '| Subject:', subject);
 
     return { success: true, from: config.fromEmail, cc: ccEmails, messageId };
   } catch (error) {
@@ -123,78 +142,83 @@ export async function sendOrderEmail({ to, subject, body, order, replyToToken, a
 }
 
 /**
- * Generate plain text version of email with order details
+ * Generate plain text version of email
  */
-function generatePlainTextEmail(body, order, includeOrderDetails = true) {
-  if (!includeOrderDetails) {
-    return body;
-  }
-
+function generatePlainTextEmail(body, order, config, includeOrderDetails = true) {
   const shipping = order.shippingInfo || {};
+  const { firstName } = getPersonalizedGreeting(shipping);
   const items = order.items || [];
 
   let text = body + '\n\n';
-  text += '═══════════════════════════════════════════════════════════════\n';
-  text += '                       ORDER DETAILS\n';
-  text += '═══════════════════════════════════════════════════════════════\n\n';
 
-  text += `Order #:     ${order.orderNumber}\n`;
-  if (shipping.isInternalOrder) {
-    text += `Type:        Internal Academica Order\n`;
-    text += `Contact:     ${shipping.contactName || 'N/A'}\n`;
-    text += `Department:  ${shipping.department || 'N/A'}\n`;
-  } else {
-    text += `School:      ${shipping.schoolName || 'N/A'}\n`;
-    text += `Contact:     ${shipping.contactName || 'N/A'}\n`;
-    if (shipping.positionTitle) text += `Position:    ${shipping.positionTitle}\n`;
-  }
-  text += `Phone:       ${shipping.phone || 'N/A'}\n`;
-  text += `Email:       ${shipping.email || 'N/A'}\n\n`;
+  if (includeOrderDetails) {
+    text += '═══════════════════════════════════════════════════════════════\n';
+    text += '                       ORDER DETAILS\n';
+    text += '═══════════════════════════════════════════════════════════════\n\n';
 
-  text += '───────────────────────────────────────────────────────────────\n';
-  text += '                       ORDER ITEMS\n';
-  text += '───────────────────────────────────────────────────────────────\n\n';
-
-  items.forEach((item, index) => {
-    text += `${index + 1}. ${item.name}\n`;
-
-    // Add all options (check both selectedOptions and options)
-    const opts = item.selectedOptions || item.options || {};
-    if (Object.keys(opts).length > 0) {
-      Object.entries(opts).forEach(([key, value]) => {
-        if (value && key !== 'customText' && key !== 'artworkOption') {
-          const label = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
-          text += `   ${label}: ${value}\n`;
-        }
-      });
-      if (opts.artworkOption) {
-        const artworkLabel = opts.artworkOption === 'use_existing' ? 'Use existing artwork' :
-                            opts.artworkOption === 'send_later' ? 'Will send later' : opts.artworkOption;
-        text += `   Artwork: ${artworkLabel}\n`;
-      }
-      if (opts.customText) {
-        if (typeof opts.customText === 'object') {
-          if (opts.customText.headline) text += `   Headline: ${opts.customText.headline}\n`;
-          if (opts.customText.subheadline) text += `   Subheadline: ${opts.customText.subheadline}\n`;
-          if (opts.customText.bodyText) text += `   Body Text: ${opts.customText.bodyText}\n`;
-        } else {
-          text += `   Custom Text: ${opts.customText}\n`;
-        }
-      }
+    text += `Order #:     ${order.orderNumber}\n`;
+    if (shipping.isInternalOrder) {
+      text += `Type:        Internal Academica Order\n`;
+      text += `Contact:     ${shipping.contactName || 'N/A'}\n`;
+      text += `Department:  ${shipping.department || 'N/A'}\n`;
+    } else {
+      text += `School:      ${shipping.schoolName || 'N/A'}\n`;
+      text += `Contact:     ${shipping.contactName || 'N/A'}\n`;
+      if (shipping.positionTitle) text += `Position:    ${shipping.positionTitle}\n`;
     }
-    text += '\n';
-  });
+    text += `Phone:       ${shipping.phone || 'N/A'}\n`;
+    text += `Email:       ${shipping.email || 'N/A'}\n\n`;
 
-  text += '═══════════════════════════════════════════════════════════════\n';
+    text += '───────────────────────────────────────────────────────────────\n';
+    text += '                       ORDER ITEMS\n';
+    text += '───────────────────────────────────────────────────────────────\n\n';
+
+    items.forEach((item, index) => {
+      text += `${index + 1}. ${item.name}\n`;
+      const opts = item.selectedOptions || item.options || {};
+      if (Object.keys(opts).length > 0) {
+        Object.entries(opts).forEach(([key, value]) => {
+          if (value && key !== 'customText' && key !== 'artworkOption') {
+            const label = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
+            text += `   ${label}: ${value}\n`;
+          }
+        });
+        if (opts.artworkOption) {
+          const artworkLabel = opts.artworkOption === 'use_existing' ? 'Use existing artwork' :
+                              opts.artworkOption === 'send_later' ? 'Will send later' : opts.artworkOption;
+          text += `   Artwork: ${artworkLabel}\n`;
+        }
+        if (opts.customText) {
+          if (typeof opts.customText === 'object') {
+            if (opts.customText.headline) text += `   Headline: ${opts.customText.headline}\n`;
+            if (opts.customText.subheadline) text += `   Subheadline: ${opts.customText.subheadline}\n`;
+            if (opts.customText.bodyText) text += `   Body Text: ${opts.customText.bodyText}\n`;
+          } else {
+            text += `   Custom Text: ${opts.customText}\n`;
+          }
+        }
+      }
+      text += '\n';
+    });
+
+    text += '═══════════════════════════════════════════════════════════════\n\n';
+  }
+
+  // Add footer with company info (CAN-SPAM compliance)
+  text += '---\n';
+  text += `AcademicaMart | ${config.companyAddress}\n`;
+  text += `Phone: ${config.companyPhone} | ${config.websiteUrl}\n`;
+  text += 'To stop receiving order updates, reply with "Unsubscribe" in the subject.\n';
 
   return text;
 }
 
 /**
- * Generate professional HTML email with proper tables
+ * Generate professional HTML email
  */
-function generateHtmlEmail(body, order, includeOrderDetails = true) {
+function generateHtmlEmail(body, order, config, includeOrderDetails = true) {
   const shipping = order.shippingInfo || {};
+  const { firstName } = getPersonalizedGreeting(shipping);
   const items = order.items || [];
 
   // Escape the message body for HTML and convert URLs to clickable links
@@ -203,10 +227,25 @@ function generateHtmlEmail(body, order, includeOrderDetails = true) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/\n/g, '<br>')
-    // Convert URLs to clickable links (must come after HTML escaping)
     .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color: #2563eb; text-decoration: underline;">$1</a>');
 
-  // Simple message-only email if order details not included
+  // Footer HTML (CAN-SPAM compliance + deliverability)
+  const footerHtml = `
+    <tr>
+      <td style="background-color: #f9fafb; padding: 24px 32px; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
+        <p style="margin: 0 0 8px 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;">
+          This email is regarding your order with AcademicaMart. <strong>Simply reply to this email to respond.</strong>
+        </p>
+        <p style="margin: 12px 0 0 0; font-family: ${systemFontStack}; font-size: 11px; color: #9ca3af; line-height: 1.5;">
+          AcademicaMart | ${escapeHtml(config.companyAddress)}<br>
+          Phone: ${escapeHtml(config.companyPhone)} | <a href="${config.websiteUrl}" style="color: #9ca3af;">${config.websiteUrl}</a><br>
+          <a href="mailto:${config.fromEmail}?subject=Unsubscribe" style="color: #9ca3af;">Unsubscribe from order updates</a>
+        </p>
+      </td>
+    </tr>
+  `;
+
+  // Simple message-only email (but still with context)
   if (!includeOrderDetails) {
     return `
 <!DOCTYPE html>
@@ -214,19 +253,22 @@ function generateHtmlEmail(body, order, includeOrderDetails = true) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Message from AcademicaMart</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Order #${order.orderNumber} - AcademicaMart</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: ${systemFontStack};">
+<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: ${systemFontStack}; -webkit-font-smoothing: antialiased;">
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f3f4f6;">
     <tr>
       <td style="padding: 30px 20px;">
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 640px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <!-- Header -->
           <tr>
             <td style="padding: 24px 32px; border-bottom: 1px solid #e5e7eb;">
               <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #111827;">AcademicaMart</h1>
-              <p style="margin: 4px 0 0 0; font-family: ${systemFontStack}; font-size: 14px; color: #6b7280;">Order #${order.orderNumber}</p>
+              <p style="margin: 4px 0 0 0; font-family: ${systemFontStack}; font-size: 14px; color: #6b7280;">Order #${order.orderNumber}${shipping.schoolName ? ` - ${escapeHtml(shipping.schoolName)}` : ''}</p>
             </td>
           </tr>
+          <!-- Content -->
           <tr>
             <td style="padding: 32px;">
               <div style="font-family: ${systemFontStack}; font-size: 15px; line-height: 1.6; color: #374151;">
@@ -234,12 +276,24 @@ function generateHtmlEmail(body, order, includeOrderDetails = true) {
               </div>
             </td>
           </tr>
+          <!-- Order Reference Box -->
           <tr>
-            <td style="background-color: #f9fafb; padding: 20px 32px; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0 0 8px 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;">This email is regarding your order with AcademicaMart.</p>
-              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 13px; color: #374151;"><strong>Simply reply to this email to respond.</strong></p>
+            <td style="padding: 0 32px 24px 32px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                <tr>
+                  <td style="padding: 16px;">
+                    <p style="margin: 0 0 4px 0; font-family: ${systemFontStack}; font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Order Reference</p>
+                    <p style="margin: 0; font-family: ${systemFontStack}; font-size: 14px; color: #111827;">
+                      <strong>#${order.orderNumber}</strong>
+                      ${shipping.contactName ? ` | ${escapeHtml(shipping.contactName)}` : ''}
+                      ${shipping.schoolName ? ` | ${escapeHtml(shipping.schoolName)}` : ''}
+                    </p>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
+          ${footerHtml}
         </table>
       </td>
     </tr>
@@ -253,10 +307,9 @@ function generateHtmlEmail(body, order, includeOrderDetails = true) {
   let itemsHtml = '';
   items.forEach((item, index) => {
     const rowBg = index % 2 === 0 ? '#ffffff' : '#f9fafb';
-
-    // Build options string (check both selectedOptions and options)
     const opts = item.selectedOptions || item.options || {};
     let optionsHtml = '';
+
     if (Object.keys(opts).length > 0) {
       const optionsList = [];
       Object.entries(opts).forEach(([key, value]) => {
@@ -305,7 +358,7 @@ function generateHtmlEmail(body, order, includeOrderDetails = true) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Order ${order.orderNumber}</title>
+  <title>Order #${order.orderNumber} - AcademicaMart</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: ${systemFontStack}; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f3f4f6;">
@@ -317,7 +370,7 @@ function generateHtmlEmail(body, order, includeOrderDetails = true) {
           <tr>
             <td style="padding: 24px 32px; border-bottom: 1px solid #e5e7eb;">
               <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #111827;">AcademicaMart</h1>
-              <p style="margin: 4px 0 0 0; font-family: ${systemFontStack}; font-size: 14px; color: #6b7280;">Order #${order.orderNumber}</p>
+              <p style="margin: 4px 0 0 0; font-family: ${systemFontStack}; font-size: 14px; color: #6b7280;">Order #${order.orderNumber}${shipping.schoolName ? ` - ${escapeHtml(shipping.schoolName)}` : ''}</p>
             </td>
           </tr>
 
@@ -387,13 +440,7 @@ function generateHtmlEmail(body, order, includeOrderDetails = true) {
             </td>
           </tr>
 
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #f9fafb; padding: 24px 32px; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0 0 8px 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;">This email is regarding your order with AcademicaMart.</p>
-              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;"><strong>Simply reply to this email to respond.</strong></p>
-            </td>
-          </tr>
+          ${footerHtml}
 
         </table>
       </td>
@@ -419,169 +466,47 @@ function escapeHtml(str) {
 
 /**
  * Send proof notification email to customer
+ * Uses sendOrderEmail internally for consistency and threading
  */
-export async function sendProofEmail({ to, order, proof, proofUrl }) {
+export async function sendProofEmail({ to, order, proof, proofUrl, replyToToken, threadMessageIds = [] }) {
   const config = getConfig();
   const shippingInfo = typeof order.shippingInfo === 'string'
     ? JSON.parse(order.shippingInfo)
     : order.shippingInfo;
 
-  const contactName = shippingInfo?.contactName || 'Valued Customer';
-  const firstName = contactName.split(' ')[0];
+  const { firstName } = getPersonalizedGreeting(shippingInfo);
   const orderNumber = order.orderNumber;
 
-  // Generate a unique Message-ID using UUID format for better deliverability
-  const crypto = await import('crypto');
-  const uuid = crypto.randomUUID();
-  const messageId = `<${uuid}@academicamart.com>`;
+  // Build personalized email body
+  const body = `Hi ${firstName},
 
-  // Get CC recipients
-  const ccEmails = shippingInfo?.additionalEmails || [];
+A design proof is ready for your review for Order #${orderNumber}.
 
-  if (!config.apiKey) {
-    console.warn('SENDGRID_API_KEY not configured - proof email not sent');
-    console.log('Would send proof email:', { to, cc: ccEmails, orderNumber, proofUrl, messageId });
-    return { success: true, from: config.fromEmail, messageId, dev: true };
-  }
+**Proof:** ${proof.title || `Version ${proof.version}`}
 
-  // Initialize SendGrid
-  initSendGrid();
-
-  try {
-    const msg = {
-      to,
-      from: {
-        email: config.fromEmail,
-        name: config.fromName
-      },
-      replyTo: config.fromEmail,
-      subject: `Order #${orderNumber} - Proof Ready for Review`,
-      text: generateProofPlainText(firstName, orderNumber, proof, proofUrl),
-      html: generateProofHtml(firstName, orderNumber, proof, proofUrl),
-      headers: {
-        'Message-ID': messageId,
-        'X-Entity-Ref-ID': uuid, // Unique identifier to prevent duplicate detection
-        'X-Mailer': 'AcademicaMart-OrderSystem'
-      }
-    };
-
-    if (ccEmails.length > 0) {
-      msg.cc = ccEmails;
-    }
-
-    await sgMail.send(msg);
-    console.log('Proof email sent successfully to:', to, ccEmails.length > 0 ? `(CC: ${ccEmails.join(', ')})` : '');
-
-    return { success: true, from: config.fromEmail, messageId };
-  } catch (error) {
-    console.error('SendGrid error (proof):', error.response?.body || error.message);
-    return {
-      success: false,
-      error: error.response?.body?.errors?.[0]?.message || error.message
-    };
-  }
-}
-
-function generateProofPlainText(firstName, orderNumber, proof, proofUrl) {
-  return `
-Hi ${firstName},
-
-A proof is ready for your review!
-
-Order: #${orderNumber}
-Proof: ${proof.title || `Version ${proof.version}`}
-
-Please click the link below to review the proof and provide feedback or approve the design:
-
+Please review the proof using the secure link below:
 ${proofUrl}
 
-You can:
-- Click on specific areas of the design to leave feedback
-- Draw rectangles to highlight sections
-- Approve the proof when you're satisfied with the design
+**What you can do:**
+- View the full design proof
+- Leave feedback by clicking on specific areas
+- Draw rectangles to highlight sections that need changes
+- Approve the proof when you're satisfied
 
-This link will expire in 60 days.
+This secure link will expire in 60 days. If you have any questions, simply reply to this email.
 
-If you have any questions, simply reply to this email.
+Thank you for your order!`;
 
-Best regards,
-AcademicaMart Team
-  `.trim();
-}
-
-function generateProofHtml(firstName, orderNumber, proof, proofUrl) {
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Proof Ready for Review</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: ${systemFontStack};">
-  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f3f4f6;">
-    <tr>
-      <td style="padding: 30px 20px;">
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 640px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-
-          <!-- Header -->
-          <tr>
-            <td style="padding: 24px 32px; border-bottom: 1px solid #e5e7eb;">
-              <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #111827;">AcademicaMart</h1>
-              <p style="margin: 4px 0 0 0; font-family: ${systemFontStack}; font-size: 14px; color: #6b7280;">Order #${orderNumber}</p>
-            </td>
-          </tr>
-
-          <!-- Content -->
-          <tr>
-            <td style="padding: 32px;">
-              <p style="margin: 0 0 20px 0; font-family: ${systemFontStack}; font-size: 16px; color: #374151;">
-                Hi ${escapeHtml(firstName)},
-              </p>
-              <p style="margin: 0 0 24px 0; font-family: ${systemFontStack}; font-size: 15px; line-height: 1.6; color: #374151;">
-                A proof is ready for your review! Please take a moment to review the design and provide any feedback or approve it for production.
-              </p>
-
-              <!-- Proof Info Box -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-                <p style="margin: 0 0 8px 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;">PROOF DETAILS</p>
-                <p style="margin: 0; font-family: ${systemFontStack}; font-size: 18px; font-weight: 600; color: #111827;">${escapeHtml(proof.title || `Version ${proof.version}`)}</p>
-              </div>
-
-              <!-- CTA Button -->
-              <div style="text-align: center; margin: 32px 0;">
-                <a href="${proofUrl}" style="display: inline-block; background-color: #111827; color: #ffffff; font-family: ${systemFontStack}; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px;">
-                  Review Proof
-                </a>
-              </div>
-
-              <!-- Instructions -->
-              <div style="border-top: 1px solid #e5e7eb; padding-top: 24px;">
-                <p style="margin: 0 0 12px 0; font-family: ${systemFontStack}; font-size: 14px; font-weight: 600; color: #111827;">What you can do:</p>
-                <ul style="margin: 0; padding: 0 0 0 20px; font-family: ${systemFontStack}; font-size: 14px; line-height: 1.8; color: #374151;">
-                  <li>Click on specific areas of the design to leave feedback</li>
-                  <li>Draw rectangles to highlight sections that need changes</li>
-                  <li>Approve the proof when you're satisfied with the design</li>
-                </ul>
-              </div>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #f9fafb; padding: 20px 32px; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0 0 8px 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;">This email is regarding your order with AcademicaMart.</p>
-              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 13px; color: #374151;"><strong>Simply reply to this email to respond.</strong></p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `;
+  // Use sendOrderEmail for consistent deliverability and threading
+  return sendOrderEmail({
+    to,
+    subject: `Order #${orderNumber} - Your Design Proof is Ready`,
+    body,
+    order: { ...order, shippingInfo },
+    replyToToken: replyToToken || `proof-${proof.id}`,
+    includeOrderDetails: false,
+    threadMessageIds
+  });
 }
 
 export default { sendOrderEmail, sendProofEmail };
