@@ -68,7 +68,7 @@ export default function OrderConfirmation() {
             </div>
             <div className="text-right">
               <p className="text-primary-100 text-sm">Order Date</p>
-              <p className="font-medium">{new Date(order.createdAt).toLocaleDateString()}</p>
+              <p className="font-medium">{new Date(order.createdAt).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' })}</p>
             </div>
           </div>
         </div>

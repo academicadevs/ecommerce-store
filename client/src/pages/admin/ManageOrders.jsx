@@ -346,7 +346,7 @@ export default function ManageOrders() {
                         </span>
                       )}
                       <span>•</span>
-                      <span>{new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                      <span>{new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' })}</span>
                     </div>
                   </div>
 

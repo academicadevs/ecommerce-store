@@ -281,7 +281,8 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
               year: 'numeric',
               hour: '2-digit',
               minute: '2-digit',
-            })}
+              timeZone: 'America/Los_Angeles',
+            })} PT
           </div>
         </div>
 
@@ -435,6 +436,7 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
                           day: 'numeric',
                           hour: '2-digit',
                           minute: '2-digit',
+                          timeZone: 'America/Los_Angeles',
                         })}
                       </p>
                     </div>

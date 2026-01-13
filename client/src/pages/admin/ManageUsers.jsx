@@ -384,7 +384,7 @@ export default function ManageUsers() {
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Joined</label>
                     <span className="text-sm text-gray-600">
-                      {new Date(user.createdAt).toLocaleDateString()}
+                      {new Date(user.createdAt).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' })}
                     </span>
                   </div>
 
@@ -456,6 +456,7 @@ export default function ManageUsers() {
                                 day: 'numeric',
                                 hour: '2-digit',
                                 minute: '2-digit',
+                                timeZone: 'America/Los_Angeles',
                               })}
                             </p>
                           </div>

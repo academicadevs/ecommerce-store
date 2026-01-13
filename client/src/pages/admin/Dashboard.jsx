@@ -67,7 +67,7 @@ export default function AdminDashboard() {
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
+    return date.toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' });
   };
 
   if (loading) {
@@ -312,7 +312,7 @@ export default function AdminDashboard() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm text-gray-500">
-                        {new Date(order.createdAt).toLocaleDateString()}
+                        {new Date(order.createdAt).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' })}
                       </span>
                     </td>
                   </tr>

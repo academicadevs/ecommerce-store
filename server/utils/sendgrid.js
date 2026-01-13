@@ -40,10 +40,10 @@ export async function sendOrderEmail({ to, subject, body, order, replyToToken, a
   const config = getConfig();
   const orderNumber = order.orderNumber;
 
-  // Generate a unique Message-ID for this email
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 10);
-  const messageId = `<${timestamp}.${random}@academicamart.com>`;
+  // Generate a unique Message-ID using UUID format for better deliverability
+  const crypto = await import('crypto');
+  const uuid = crypto.randomUUID();
+  const messageId = `<${uuid}@academicamart.com>`;
 
   // Get CC recipients from order's additionalEmails
   const ccEmails = order.shippingInfo?.additionalEmails || [];
@@ -79,17 +79,14 @@ export async function sendOrderEmail({ to, subject, body, order, replyToToken, a
       text: generatePlainTextEmail(body, order, includeOrderDetails),
       html: generateHtmlEmail(body, order, includeOrderDetails),
       headers: {
-        'Message-ID': messageId
+        'Message-ID': messageId,
+        'X-Entity-Ref-ID': uuid, // Unique identifier to prevent duplicate detection
+        'X-Mailer': 'AcademicaMart-OrderSystem'
       }
     };
 
-    // Add threading headers if there are previous messages
-    if (threadMessageIds.length > 0) {
-      // In-Reply-To: the most recent message in the thread
-      msg.headers['In-Reply-To'] = threadMessageIds[threadMessageIds.length - 1];
-      // References: all previous messages in the thread
-      msg.headers['References'] = threadMessageIds.join(' ');
-    }
+    // Note: Threading headers (In-Reply-To, References) are intentionally omitted
+    // as they can cause deliverability issues with some email providers
 
     // Add CC recipients if any
     if (ccEmails.length > 0) {
@@ -426,10 +423,10 @@ export async function sendProofEmail({ to, order, proof, proofUrl }) {
   const firstName = contactName.split(' ')[0];
   const orderNumber = order.orderNumber;
 
-  // Generate a unique Message-ID for this email
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 10);
-  const messageId = `<${timestamp}.${random}@academicamart.com>`;
+  // Generate a unique Message-ID using UUID format for better deliverability
+  const crypto = await import('crypto');
+  const uuid = crypto.randomUUID();
+  const messageId = `<${uuid}@academicamart.com>`;
 
   // Get CC recipients
   const ccEmails = shippingInfo?.additionalEmails || [];
@@ -455,7 +452,9 @@ export async function sendProofEmail({ to, order, proof, proofUrl }) {
       text: generateProofPlainText(firstName, orderNumber, proof, proofUrl),
       html: generateProofHtml(firstName, orderNumber, proof, proofUrl),
       headers: {
-        'Message-ID': messageId
+        'Message-ID': messageId,
+        'X-Entity-Ref-ID': uuid, // Unique identifier to prevent duplicate detection
+        'X-Mailer': 'AcademicaMart-OrderSystem'
       }
     };
 
@@ -464,7 +463,7 @@ export async function sendProofEmail({ to, order, proof, proofUrl }) {
     }
 
     await sgMail.send(msg);
-    console.log('Proof email sent successfully to:', to);
+    console.log('Proof email sent successfully to:', to, ccEmails.length > 0 ? `(CC: ${ccEmails.join(', ')})` : '');
 
     return { success: true, from: config.fromEmail, messageId };
   } catch (error) {

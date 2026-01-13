@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 export default function CommunicationFeed({ communications, loading }) {
   const [previewImage, setPreviewImage] = useState(null);
+  const [previewPdf, setPreviewPdf] = useState(null);
 
   const formatFileSize = (bytes) => {
     if (!bytes) return '';
@@ -12,6 +13,10 @@ export default function CommunicationFeed({ communications, loading }) {
 
   const isImageFile = (type) => {
     return type && type.startsWith('image/');
+  };
+
+  const isPdfFile = (type) => {
+    return type && (type.includes('pdf') || type === 'application/pdf');
   };
 
   const getFileIcon = (type) => {
@@ -108,6 +113,7 @@ export default function CommunicationFeed({ communications, loading }) {
                   day: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit',
+                  timeZone: 'America/Los_Angeles',
                 })}
               </span>
             </div>
@@ -165,6 +171,18 @@ export default function CommunicationFeed({ communications, loading }) {
                             </svg>
                           </button>
                         )}
+                        {isPdfFile(att.type) && (
+                          <button
+                            onClick={() => setPreviewPdf(att.path)}
+                            className="p-1 text-gray-400 hover:text-academica-blue"
+                            title="View PDF"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          </button>
+                        )}
                         <a
                           href={`${att.path}/download`}
                           className="p-1 text-gray-400 hover:text-academica-blue"
@@ -210,6 +228,41 @@ export default function CommunicationFeed({ communications, loading }) {
                 href={`${previewImage}/download`}
                 className="inline-flex items-center gap-2 text-white hover:text-gray-300"
                 onClick={(e) => e.stopPropagation()}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Preview Modal */}
+      {previewPdf && (
+        <div
+          className="fixed inset-0 z-[60] bg-black bg-opacity-75 flex items-center justify-center p-4"
+          onClick={() => setPreviewPdf(null)}
+        >
+          <div className="relative w-full max-w-5xl h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setPreviewPdf(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300"
+            >
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <iframe
+              src={previewPdf}
+              className="w-full h-full rounded-lg bg-white"
+              title="PDF Preview"
+            />
+            <div className="mt-2 text-center">
+              <a
+                href={`${previewPdf}/download`}
+                className="inline-flex items-center gap-2 text-white hover:text-gray-300"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

@@ -87,7 +87,8 @@ export default function OrderDetail() {
                   day: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit',
-                })}
+                  timeZone: 'America/Los_Angeles',
+                })} PT
               </p>
             </div>
             <span className={`badge ${statusColors[order.status] || 'badge-info'} text-sm px-3 py-1`}>
