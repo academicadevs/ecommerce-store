@@ -218,8 +218,9 @@ function generateHtmlEmail(body, order, includeOrderDetails = true) {
       <td style="padding: 30px 20px;">
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 640px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
           <tr>
-            <td style="background-color: #1e40af; padding: 24px 32px; border-radius: 8px 8px 0 0;">
-              <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #ffffff;">AcademicaMart</h1>
+            <td style="padding: 24px 32px; border-bottom: 1px solid #e5e7eb;">
+              <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #111827;">AcademicaMart</h1>
+              <p style="margin: 4px 0 0 0; font-family: ${systemFontStack}; font-size: 14px; color: #6b7280;">Order #${order.orderNumber}</p>
             </td>
           </tr>
           <tr>
@@ -231,7 +232,8 @@ function generateHtmlEmail(body, order, includeOrderDetails = true) {
           </tr>
           <tr>
             <td style="background-color: #f9fafb; padding: 20px 32px; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;"><strong>Simply reply to this email to respond.</strong></p>
+              <p style="margin: 0 0 8px 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;">This email is regarding your order with AcademicaMart.</p>
+              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 13px; color: #374151;"><strong>Simply reply to this email to respond.</strong></p>
             </td>
           </tr>
         </table>
@@ -309,15 +311,9 @@ function generateHtmlEmail(body, order, includeOrderDetails = true) {
 
           <!-- Header -->
           <tr>
-            <td style="background-color: #1e40af; padding: 24px 32px; border-radius: 8px 8px 0 0;">
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                <tr>
-                  <td>
-                    <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #ffffff;">AcademicaMart</h1>
-                    <p style="margin: 4px 0 0 0; font-family: ${systemFontStack}; font-size: 14px; color: rgba(255,255,255,0.9);">Order #${order.orderNumber}</p>
-                  </td>
-                </tr>
-              </table>
+            <td style="padding: 24px 32px; border-bottom: 1px solid #e5e7eb;">
+              <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #111827;">AcademicaMart</h1>
+              <p style="margin: 4px 0 0 0; font-family: ${systemFontStack}; font-size: 14px; color: #6b7280;">Order #${order.orderNumber}</p>
             </td>
           </tr>
 

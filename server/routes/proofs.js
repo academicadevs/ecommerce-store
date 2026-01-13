@@ -7,7 +7,7 @@ import { dirname } from 'path';
 import { Proof, ProofAnnotation } from '../models/Proof.js';
 import { Order } from '../models/Order.js';
 import { OrderCommunication } from '../models/OrderCommunication.js';
-import { sendProofEmail } from '../utils/sendgrid.js';
+import { sendOrderEmail } from '../utils/sendgrid.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -97,18 +97,48 @@ router.post('/upload', authenticate, requireAdmin, upload.single('file'), async 
         ? JSON.parse(order.shippingInfo || '{}')
         : (order.shippingInfo || {});
       const customerEmail = shippingInfo.email;
+      const firstName = (shippingInfo.contactName || 'Valued Customer').split(' ')[0];
 
       if (customerEmail) {
         // Generate the proof review URL
         const baseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
         const proofUrl = `${baseUrl}/proof/${proof.accessToken}`;
 
-        // Send email
-        await sendProofEmail({
+        // Create the email body
+        const subject = `Order #${order.orderNumber} - Proof Ready for Review`;
+        const body = `Hi ${firstName},
+
+A proof is ready for your review!
+
+Proof: ${proof.title || `Version ${proof.version}`}
+
+Please click the link below to review the proof and provide feedback or approve the design:
+
+${proofUrl}
+
+You can:
+- Click on specific areas of the design to leave feedback
+- Draw rectangles to highlight sections that need changes
+- Approve the proof when you're satisfied with the design
+
+Best regards,
+AcademicaMart Team`;
+
+        // Generate reply token for this proof
+        const replyToToken = OrderCommunication.generateReplyToken(orderId);
+
+        // Get existing message IDs for threading
+        const threadMessageIds = OrderCommunication.getMessageIdsForOrder(orderId);
+
+        // Send email using the same format as communication emails
+        const result = await sendOrderEmail({
           to: customerEmail,
-          order,
-          proof,
-          proofUrl
+          subject,
+          body,
+          order: { ...order, shippingInfo },
+          replyToToken,
+          includeOrderDetails: false,
+          threadMessageIds
         });
 
         // Record in communication feed
@@ -118,9 +148,10 @@ router.post('/upload', authenticate, requireAdmin, upload.single('file'), async 
           adminId: req.user.id,
           senderEmail: process.env.SENDGRID_FROM_EMAIL || 'orders@academicamart.com',
           recipientEmail: customerEmail,
-          subject: `Proof Ready for Review - Order #${order.orderNumber}`,
-          body: `A new proof (Version ${proof.version}) has been uploaded for your review.\n\nPlease review and provide feedback or approve the design at: ${proofUrl}`,
-          replyToToken: `proof-${proof.id}`
+          subject,
+          body,
+          replyToToken,
+          messageId: result.messageId
         });
       }
     }
