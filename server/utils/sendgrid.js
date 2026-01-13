@@ -430,13 +430,18 @@ export async function sendProofEmail({ to, order, proof, proofUrl }) {
   const firstName = contactName.split(' ')[0];
   const orderNumber = order.orderNumber;
 
+  // Generate a unique Message-ID for this email
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 10);
+  const messageId = `<${timestamp}.${random}@academicamart.com>`;
+
   // Get CC recipients
   const ccEmails = shippingInfo?.additionalEmails || [];
 
   if (!config.apiKey) {
     console.warn('SENDGRID_API_KEY not configured - proof email not sent');
-    console.log('Would send proof email:', { to, cc: ccEmails, orderNumber, proofUrl });
-    return { success: true, from: config.fromEmail, dev: true };
+    console.log('Would send proof email:', { to, cc: ccEmails, orderNumber, proofUrl, messageId });
+    return { success: true, from: config.fromEmail, messageId, dev: true };
   }
 
   // Initialize SendGrid
@@ -449,9 +454,13 @@ export async function sendProofEmail({ to, order, proof, proofUrl }) {
         email: config.fromEmail,
         name: config.fromName
       },
-      subject: `Proof Ready for Review - Order #${orderNumber}`,
+      replyTo: config.fromEmail,
+      subject: `Order #${orderNumber} - Proof Ready for Review`,
       text: generateProofPlainText(firstName, orderNumber, proof, proofUrl),
-      html: generateProofHtml(firstName, orderNumber, proof, proofUrl)
+      html: generateProofHtml(firstName, orderNumber, proof, proofUrl),
+      headers: {
+        'Message-ID': messageId
+      }
     };
 
     if (ccEmails.length > 0) {
@@ -461,7 +470,7 @@ export async function sendProofEmail({ to, order, proof, proofUrl }) {
     await sgMail.send(msg);
     console.log('Proof email sent successfully to:', to);
 
-    return { success: true, from: config.fromEmail };
+    return { success: true, from: config.fromEmail, messageId };
   } catch (error) {
     console.error('SendGrid error (proof):', error.response?.body || error.message);
     return {
