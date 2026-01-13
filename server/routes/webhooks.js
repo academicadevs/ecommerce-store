@@ -13,8 +13,9 @@ const __dirname = dirname(__filename);
 
 const router = express.Router();
 
-// Ensure attachments directory exists
-const attachmentsDir = path.join(__dirname, '../uploads/attachments');
+// Ensure attachments directory exists - use Railway volume in production
+const baseUploadsDir = process.env.UPLOADS_PATH || path.join(__dirname, '../uploads');
+const attachmentsDir = path.join(baseUploadsDir, 'attachments');
 if (!fs.existsSync(attachmentsDir)) {
   fs.mkdirSync(attachmentsDir, { recursive: true });
 }

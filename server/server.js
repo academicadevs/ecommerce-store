@@ -32,9 +32,20 @@ app.use(express.json());
 // Serve static files for product images (placeholder)
 app.use('/images', express.static(join(__dirname, 'public/images')));
 
+// Uploads directory - use Railway volume in production, local in development
+const uploadsDir = process.env.UPLOADS_PATH || join(__dirname, 'uploads');
+
+// Ensure uploads directories exist
+const ensureDir = (dir) => { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); };
+ensureDir(join(uploadsDir, 'proofs'));
+ensureDir(join(uploadsDir, 'attachments'));
+
+// Export for use in other modules
+export { uploadsDir };
+
 // Download endpoint for attachments (must come before static serving)
 app.get('/uploads/attachments/:filename/download', (req, res) => {
-  const filePath = join(__dirname, 'uploads/attachments', req.params.filename);
+  const filePath = join(uploadsDir, 'attachments', req.params.filename);
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ error: 'File not found' });
   }
@@ -42,7 +53,7 @@ app.get('/uploads/attachments/:filename/download', (req, res) => {
 });
 
 // Serve uploaded files (proofs, attachments)
-app.use('/uploads', express.static(join(__dirname, 'uploads')));
+app.use('/uploads', express.static(uploadsDir));
 
 // API Routes
 app.use('/api/auth', authRoutes);

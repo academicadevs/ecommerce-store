@@ -15,8 +15,9 @@ const __dirname = dirname(__filename);
 
 const router = express.Router();
 
-// Configure multer for proof uploads
-const uploadsDir = path.join(__dirname, '../uploads/proofs');
+// Configure multer for proof uploads - use Railway volume in production
+const baseUploadsDir = process.env.UPLOADS_PATH || path.join(__dirname, '../uploads');
+const uploadsDir = path.join(baseUploadsDir, 'proofs');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
