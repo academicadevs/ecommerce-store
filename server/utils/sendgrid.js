@@ -85,8 +85,13 @@ export async function sendOrderEmail({ to, subject, body, order, replyToToken, a
       }
     };
 
-    // Note: Threading headers (In-Reply-To, References) are intentionally omitted
-    // as they can cause deliverability issues with some email providers
+    // Add threading headers if there are previous messages (keeps emails in same thread)
+    if (threadMessageIds && threadMessageIds.length > 0) {
+      // In-Reply-To: the most recent message in the thread
+      msg.headers['In-Reply-To'] = threadMessageIds[threadMessageIds.length - 1];
+      // References: all previous messages in the thread
+      msg.headers['References'] = threadMessageIds.join(' ');
+    }
 
     // Add CC recipients if any
     if (ccEmails.length > 0) {
@@ -192,12 +197,14 @@ function generateHtmlEmail(body, order, includeOrderDetails = true) {
   const shipping = order.shippingInfo || {};
   const items = order.items || [];
 
-  // Escape the message body for HTML
+  // Escape the message body for HTML and convert URLs to clickable links
   const escapedBody = body
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br>');
+    .replace(/\n/g, '<br>')
+    // Convert URLs to clickable links (must come after HTML escaping)
+    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color: #2563eb; text-decoration: underline;">$1</a>');
 
   // Simple message-only email if order details not included
   if (!includeOrderDetails) {
