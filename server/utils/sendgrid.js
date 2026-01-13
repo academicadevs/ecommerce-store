@@ -524,9 +524,9 @@ function generateProofHtml(firstName, orderNumber, proof, proofUrl) {
 
           <!-- Header -->
           <tr>
-            <td style="background-color: #7c3aed; padding: 24px 32px; border-radius: 8px 8px 0 0;">
-              <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #ffffff;">Proof Ready for Review</h1>
-              <p style="margin: 4px 0 0 0; font-family: ${systemFontStack}; font-size: 14px; color: rgba(255,255,255,0.9);">Order #${orderNumber}</p>
+            <td style="padding: 24px 32px; border-bottom: 1px solid #e5e7eb;">
+              <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #111827;">AcademicaMart</h1>
+              <p style="margin: 4px 0 0 0; font-family: ${systemFontStack}; font-size: 14px; color: #6b7280;">Order #${orderNumber}</p>
             </td>
           </tr>
 
@@ -548,7 +548,7 @@ function generateProofHtml(firstName, orderNumber, proof, proofUrl) {
 
               <!-- CTA Button -->
               <div style="text-align: center; margin: 32px 0;">
-                <a href="${proofUrl}" style="display: inline-block; background-color: #7c3aed; color: #ffffff; font-family: ${systemFontStack}; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px;">
+                <a href="${proofUrl}" style="display: inline-block; background-color: #111827; color: #ffffff; font-family: ${systemFontStack}; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px;">
                   Review Proof
                 </a>
               </div>
@@ -562,19 +562,14 @@ function generateProofHtml(firstName, orderNumber, proof, proofUrl) {
                   <li>Approve the proof when you're satisfied with the design</li>
                 </ul>
               </div>
-
-              <p style="margin: 24px 0 0 0; font-family: ${systemFontStack}; font-size: 13px; color: #9ca3af;">
-                This link will expire in 60 days. If you have questions, simply reply to this email.
-              </p>
             </td>
           </tr>
 
           <!-- Footer -->
           <tr>
             <td style="background-color: #f9fafb; padding: 20px 32px; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280; text-align: center;">
-                AcademicaMart - Quality educational materials for Academica schools
-              </p>
+              <p style="margin: 0 0 8px 0; font-family: ${systemFontStack}; font-size: 13px; color: #6b7280;">This email is regarding your order with AcademicaMart.</p>
+              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 13px; color: #374151;"><strong>Simply reply to this email to respond.</strong></p>
             </td>
           </tr>
 
