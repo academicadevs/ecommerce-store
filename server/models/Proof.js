@@ -7,7 +7,8 @@ export class Proof {
   }
 
   static generateAccessToken() {
-    return crypto.randomBytes(32).toString('hex');
+    // 8 bytes = 16 hex chars - shorter URL but still secure (2^64 possibilities)
+    return crypto.randomBytes(8).toString('hex');
   }
 
   static create({ orderId, orderItemId, title, fileUrl, fileType, createdBy }) {

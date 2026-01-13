@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -30,6 +31,15 @@ app.use(express.json());
 
 // Serve static files for product images (placeholder)
 app.use('/images', express.static(join(__dirname, 'public/images')));
+
+// Download endpoint for attachments (must come before static serving)
+app.get('/uploads/attachments/:filename/download', (req, res) => {
+  const filePath = join(__dirname, 'uploads/attachments', req.params.filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+  res.download(filePath);
+});
 
 // Serve uploaded files (proofs, attachments)
 app.use('/uploads', express.static(join(__dirname, 'uploads')));

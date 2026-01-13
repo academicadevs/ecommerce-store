@@ -1,10 +1,23 @@
 import express from 'express';
 import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import { simpleParser } from 'mailparser';
 import { Order } from '../models/Order.js';
 import { OrderCommunication } from '../models/OrderCommunication.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const router = express.Router();
+
+// Ensure attachments directory exists
+const attachmentsDir = path.join(__dirname, '../uploads/attachments');
+if (!fs.existsSync(attachmentsDir)) {
+  fs.mkdirSync(attachmentsDir, { recursive: true });
+}
 
 // Multer for parsing multipart form data from SendGrid
 const upload = multer();
@@ -107,6 +120,9 @@ router.post('/sendgrid/inbound', upload.none(), async (req, res) => {
     console.log('Received inbound email:', { to, from, subject });
     console.log('Body content - text length:', text?.length || 0, 'html length:', html?.length || 0, 'raw email length:', rawEmail?.length || 0);
 
+    // Parse attachments from the raw email
+    let emailAttachments = [];
+
     // If raw email is provided (Send Raw enabled), parse it
     if (rawEmail && (!text || text.length === 0)) {
       console.log('Parsing raw MIME email...');
@@ -118,6 +134,33 @@ router.post('/sendgrid/inbound', upload.none(), async (req, res) => {
         text = parsed.text || '';
         html = parsed.html || '';
         console.log('Parsed from raw - text length:', text?.length || 0, 'subject:', subject);
+
+        // Extract attachments
+        if (parsed.attachments && parsed.attachments.length > 0) {
+          console.log('Found', parsed.attachments.length, 'attachments');
+          for (const att of parsed.attachments) {
+            try {
+              // Generate unique filename
+              const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+              const ext = path.extname(att.filename || '') || '.bin';
+              const savedFilename = uniqueSuffix + ext;
+              const filePath = path.join(attachmentsDir, savedFilename);
+
+              // Save the attachment
+              fs.writeFileSync(filePath, att.content);
+
+              emailAttachments.push({
+                filename: att.filename || 'attachment',
+                path: `/uploads/attachments/${savedFilename}`,
+                type: att.contentType || 'application/octet-stream',
+                size: att.size || att.content.length
+              });
+              console.log('Saved attachment:', att.filename, 'as', savedFilename);
+            } catch (saveErr) {
+              console.error('Failed to save attachment:', saveErr.message);
+            }
+          }
+        }
       } catch (parseErr) {
         console.error('Failed to parse raw email:', parseErr.message);
       }
@@ -198,7 +241,7 @@ router.post('/sendgrid/inbound', upload.none(), async (req, res) => {
 
     console.log('Final cleaned body:', bodyContent.substring(0, 300));
 
-    // Record the inbound communication
+    // Record the inbound communication with attachments
     const communication = OrderCommunication.create({
       orderId: originalComm.orderId,
       direction: 'inbound',
@@ -207,7 +250,8 @@ router.post('/sendgrid/inbound', upload.none(), async (req, res) => {
       recipientEmail: to,
       subject: subject || 'Re: ' + originalComm.subject,
       body: bodyContent,
-      replyToToken
+      replyToToken,
+      attachments: emailAttachments.length > 0 ? emailAttachments : null
     });
 
     console.log('Recorded inbound communication:', communication.id);
