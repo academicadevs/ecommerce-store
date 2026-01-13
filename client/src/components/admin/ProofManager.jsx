@@ -13,7 +13,7 @@ const statusLabels = {
   approved: 'Approved',
 };
 
-export default function ProofManager({ orderId, orderNumber, proofs, onUpdate }) {
+export default function ProofManager({ orderId, orderNumber, proofs, ccEmails = [], onUpdate }) {
   const [uploading, setUploading] = useState(false);
   const [title, setTitle] = useState('');
   const [sendEmail, setSendEmail] = useState(true);
@@ -157,6 +157,12 @@ export default function ProofManager({ orderId, orderNumber, proofs, onUpdate })
                 />
                 <span className="text-gray-700">Send email notification to customer</span>
               </label>
+
+              {sendEmail && ccEmails.length > 0 && (
+                <div className="text-xs text-gray-500 bg-gray-100 rounded px-3 py-2">
+                  <span className="font-medium">CC Recipients:</span> {ccEmails.join(', ')}
+                </div>
+              )}
 
               <button
                 onClick={handleUpload}
