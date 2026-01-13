@@ -6,14 +6,67 @@ export class Proof {
     return 'prf_' + crypto.randomBytes(12).toString('hex');
   }
 
-  static generateAccessToken() {
-    // 8 bytes = 16 hex chars - shorter URL but still secure (2^64 possibilities)
-    return crypto.randomBytes(8).toString('hex');
+  /**
+   * Convert text to URL-friendly slug
+   */
+  static slugify(text) {
+    if (!text) return '';
+    return text
+      .toLowerCase()
+      .replace(/['']/g, '')           // Remove apostrophes
+      .replace(/[^a-z0-9\s-]/g, '')   // Remove special characters
+      .replace(/\s+/g, '-')           // Replace spaces with hyphens
+      .replace(/-+/g, '-')            // Collapse multiple hyphens
+      .replace(/^-|-$/g, '')          // Trim hyphens from ends
+      .slice(0, 30);                  // Limit length
+  }
+
+  /**
+   * Generate a human-readable access token based on order and file info
+   * Format: {order-identifier}-{title}-v{version}-{short-unique}
+   * Example: smith-elementary-banner-v1-x7k2
+   */
+  static generateAccessToken(orderId, title, version) {
+    // Get order info for naming
+    const order = db.prepare(`SELECT orderNumber, shippingInfo FROM orders WHERE id = ?`).get(orderId);
+
+    let orderIdentifier = '';
+    if (order) {
+      const shippingInfo = JSON.parse(order.shippingInfo || '{}');
+      // Use school name for external orders, contact name for internal
+      if (shippingInfo.isInternalOrder) {
+        orderIdentifier = this.slugify(shippingInfo.contactName || shippingInfo.department);
+      } else {
+        orderIdentifier = this.slugify(shippingInfo.schoolName || shippingInfo.contactName);
+      }
+    }
+
+    // Fallback if no order identifier found
+    if (!orderIdentifier) {
+      orderIdentifier = 'order';
+    }
+
+    // Slugify the title (comes from filename or user input)
+    const titleSlug = this.slugify(title) || 'proof';
+
+    // Short unique suffix (4 chars) to ensure uniqueness
+    const uniqueSuffix = crypto.randomBytes(2).toString('hex');
+
+    // Build the access token
+    const accessToken = `${orderIdentifier}-${titleSlug}-v${version}-${uniqueSuffix}`;
+
+    // Verify uniqueness (extremely unlikely to collide, but check anyway)
+    const existing = db.prepare(`SELECT id FROM proofs WHERE accessToken = ?`).get(accessToken);
+    if (existing) {
+      // If collision, add more random chars
+      return `${accessToken}-${crypto.randomBytes(2).toString('hex')}`;
+    }
+
+    return accessToken;
   }
 
   static create({ orderId, orderItemId, title, fileUrl, fileType, createdBy }) {
     const id = this.generateId();
-    const accessToken = this.generateAccessToken();
 
     // Calculate expiration date (60 days from now)
     const expiresAt = new Date();
@@ -27,6 +80,9 @@ export class Proof {
     `).get(orderId, orderItemId, orderItemId);
 
     const version = (latestVersion?.maxVersion || 0) + 1;
+
+    // Generate human-readable access token
+    const accessToken = this.generateAccessToken(orderId, title, version);
 
     const stmt = db.prepare(`
       INSERT INTO proofs (id, orderId, orderItemId, version, title, fileUrl, fileType, accessToken, expiresAt, createdBy)
