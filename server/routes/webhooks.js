@@ -21,7 +21,12 @@ if (!fs.existsSync(attachmentsDir)) {
 }
 
 // Multer for parsing multipart form data from SendGrid
-const upload = multer();
+// Increase field size limit for large emails with embedded attachments
+const upload = multer({
+  limits: {
+    fieldSize: 50 * 1024 * 1024 // 50MB - raw email can be large with attachments
+  }
+});
 
 /**
  * Strip email signature and quoted reply text from email body
