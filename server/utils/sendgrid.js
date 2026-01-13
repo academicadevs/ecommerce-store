@@ -103,7 +103,15 @@ export async function sendOrderEmail({ to, subject, body, order, replyToToken, a
       subject: subject,
       text: generatePlainTextEmail(body, order, config, includeOrderDetails),
       html: generateHtmlEmail(body, order, config, includeOrderDetails),
-      headers
+      headers,
+      // Disable click tracking to prevent URL rewriting issues
+      // SendGrid rewrites URLs for tracking, but requires DNS setup for the tracking subdomain
+      trackingSettings: {
+        clickTracking: {
+          enable: false,
+          enableText: false
+        }
+      }
     };
 
     // Add threading headers if there are previous messages (keeps emails in same thread)
