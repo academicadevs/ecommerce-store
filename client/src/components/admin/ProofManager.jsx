@@ -158,72 +158,6 @@ export default function ProofManager({ orderId, orderNumber, proofs, ccEmails = 
                 <span className="text-gray-700">Send email notification to customer</span>
               </label>
 
-              {/* CC Recipients Section */}
-              {sendEmail && (
-                <div className="border-t border-gray-200 pt-3 mt-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
-                      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                      CC Recipients
-                    </label>
-                  </div>
-
-                  {/* Current CC Emails */}
-                  {ccEmails.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {ccEmails.map((email) => (
-                        <span
-                          key={email}
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded-md text-sm text-gray-700"
-                        >
-                          {email}
-                          <button
-                            onClick={() => onRemoveCcEmail(email)}
-                            disabled={savingCc}
-                            className="text-gray-400 hover:text-red-500 disabled:opacity-50"
-                            title="Remove"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Add New CC Email */}
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      value={newCcEmail}
-                      onChange={(e) => setNewCcEmail(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && onAddCcEmail()}
-                      placeholder="Add CC email..."
-                      className="flex-1 text-sm px-3 py-1.5 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
-                    />
-                    <button
-                      onClick={onAddCcEmail}
-                      disabled={savingCc || !newCcEmail.trim()}
-                      className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50 flex items-center gap-1"
-                    >
-                      {savingCc ? (
-                        <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                          Add
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
-
               <button
                 onClick={handleUpload}
                 disabled={uploading}
@@ -240,6 +174,70 @@ export default function ProofManager({ orderId, orderNumber, proofs, ccEmails = 
               </button>
             </>
           )}
+        </div>
+      </div>
+
+      {/* CC Recipients Section */}
+      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+        <div className="flex items-center justify-between mb-3">
+          <label className="font-medium text-charcoal flex items-center gap-2">
+            <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            CC Recipients
+          </label>
+        </div>
+
+        {/* Current CC Emails */}
+        {ccEmails.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {ccEmails.map((email) => (
+              <span
+                key={email}
+                className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded-md text-sm text-gray-700"
+              >
+                {email}
+                <button
+                  onClick={() => onRemoveCcEmail(email)}
+                  disabled={savingCc}
+                  className="text-gray-400 hover:text-red-500 disabled:opacity-50"
+                  title="Remove"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Add New CC Email */}
+        <div className="flex gap-2">
+          <input
+            type="email"
+            value={newCcEmail}
+            onChange={(e) => setNewCcEmail(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && onAddCcEmail()}
+            placeholder="Add CC email..."
+            className="flex-1 text-sm px-3 py-1.5 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+          />
+          <button
+            onClick={onAddCcEmail}
+            disabled={savingCc || !newCcEmail.trim()}
+            className="px-3 py-1.5 text-sm bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 disabled:opacity-50 flex items-center gap-1"
+          >
+            {savingCc ? (
+              <div className="w-4 h-4 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin"></div>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add
+              </>
+            )}
+          </button>
         </div>
       </div>
 
