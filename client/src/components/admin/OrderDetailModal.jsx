@@ -598,6 +598,11 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
                   orderNumber={order.orderNumber}
                   proofs={proofs}
                   ccEmails={ccEmails}
+                  newCcEmail={newCcEmail}
+                  setNewCcEmail={setNewCcEmail}
+                  savingCc={savingCc}
+                  onAddCcEmail={handleAddCcEmail}
+                  onRemoveCcEmail={handleRemoveCcEmail}
                   onUpdate={() => {
                     loadProofs();
                     loadCommunications();
