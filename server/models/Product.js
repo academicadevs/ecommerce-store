@@ -137,9 +137,6 @@ export const Product = {
   },
 
   seedProducts: () => {
-    const existingCount = Product.count();
-    if (existingCount > 0) return;
-
     const sampleProducts = [
       // ===== MARKETING MATERIALS =====
       // Flyers
@@ -1134,10 +1131,22 @@ export const Product = {
       }
     ];
 
+    // Get existing product names
+    const existingProducts = db.prepare('SELECT name FROM products').all();
+    const existingNames = new Set(existingProducts.map(p => p.name));
+
+    // Only add products that don't exist yet
+    let addedCount = 0;
     for (const product of sampleProducts) {
-      Product.create(product);
+      if (!existingNames.has(product.name)) {
+        Product.create(product);
+        addedCount++;
+        console.log(`Added missing product: ${product.name}`);
+      }
     }
 
-    console.log(`Seeded ${sampleProducts.length} sample products`);
+    if (addedCount > 0) {
+      console.log(`Added ${addedCount} missing products`);
+    }
   }
 };
