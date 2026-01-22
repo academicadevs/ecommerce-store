@@ -635,6 +635,240 @@ function getProductOverviews() {
           { q: 'Can I wash my feather flag?', a: 'Yes! Machine wash cold on gentle cycle or hand wash. Air dry completely before storing.' }
         ]}
       ]
+    },
+    'Custom T-Shirts': {
+      headline: 'Custom school t-shirts that build community.',
+      quote: 'Nothing brings a school together like matching shirts—from spirit weeks to field trips, custom tees create lasting memories.',
+      content: 'Custom t-shirts are perfect for school spirit wear, staff uniforms, sports teams, clubs, and special events. High-quality printing ensures your design stays vibrant wash after wash.',
+      sections: [
+        { type: 'intro', title: 'Understanding Printing Methods', intro: 'Different printing methods work better for different designs and quantities. We will help you choose the best option for your project.' },
+        { type: 'comparison-grid', title: 'Printing Options', columns: [
+          { name: 'Screen Printing', bullets: ['Best for large orders (24+).', 'Vibrant, durable colors.', 'Cost-effective at volume.', 'Best for simple designs.'] },
+          { name: 'Direct-to-Garment (DTG)', bullets: ['Perfect for small orders.', 'Full-color photo prints.', 'No minimum quantity.', 'Soft, breathable print.'] },
+          { name: 'Heat Transfer Vinyl', bullets: ['Great for names and numbers.', 'Durable and flexible.', 'Perfect for personalization.', 'Works on most fabrics.'] }
+        ]},
+        { type: 'comparison-grid', title: 'Shirt Styles', columns: [
+          { name: 'Classic Crew Neck', bullets: ['Traditional t-shirt style.', 'Unisex sizing available.', 'Most popular choice.'] },
+          { name: 'V-Neck', bullets: ['Modern, flattering cut.', 'Popular with adults.', 'Professional appearance.'] },
+          { name: 'Performance/Moisture-Wicking', bullets: ['Athletic fabric.', 'Great for sports teams.', 'Keeps wearers cool.'] }
+        ]},
+        { type: 'faq', title: 'T-Shirt Q&A', questions: [
+          { q: 'What is the minimum order?', a: 'There is no minimum for DTG printing. Screen printing is most cost-effective at 24+ shirts, but we can accommodate smaller orders.' },
+          { q: 'Can I see a sample before ordering?', a: 'Yes! We provide digital proofs before printing. Physical samples are available for a fee that is credited toward your order.' },
+          { q: 'How do I choose sizes?', a: 'We recommend ordering a size assortment based on your group. Our team can help you determine the right mix based on typical distributions.' }
+        ]}
+      ]
+    },
+    'Tote Bags': {
+      headline: 'Custom tote bags that carry your brand everywhere.',
+      quote: 'Every time someone carries your tote bag, your school gets free advertising—it is a walking billboard for your brand.',
+      content: 'Custom tote bags are practical promotional items that families actually use. Perfect for open house giveaways, welcome kits, book fairs, and fundraising events.',
+      sections: [
+        { type: 'intro', title: 'Choosing the Right Material', intro: 'Different materials suit different purposes and budgets. Consider how the bags will be used and your environmental priorities.' },
+        { type: 'comparison-grid', title: 'Material Options', columns: [
+          { name: 'Non-Woven Polypropylene', bullets: ['Budget-friendly choice.', 'Lightweight but sturdy.', 'Reusable and recyclable.', 'Great for events.'] },
+          { name: 'Cotton Canvas', bullets: ['Premium look and feel.', 'Extremely durable.', 'Machine washable.', 'Eco-friendly option.'] },
+          { name: 'Recycled Materials', bullets: ['Made from recycled plastic.', 'Eco-conscious choice.', 'Strong and durable.', 'Great for green schools.'] }
+        ]},
+        { type: 'comparison-grid', title: 'Style Options', columns: [
+          { name: 'Standard Tote', bullets: ['Simple open-top design.', 'Short handles.', 'Most affordable.'] },
+          { name: 'Grocery Style', bullets: ['Reinforced bottom.', 'Long handles.', 'Carries heavy items.'] },
+          { name: 'Zippered Tote', bullets: ['Secure closure.', 'Keeps contents safe.', 'More professional look.'] }
+        ]},
+        { type: 'faq', title: 'Tote Bag Q&A', questions: [
+          { q: 'What is the minimum order?', a: 'Minimum orders typically start at 50 bags, which allows for cost-effective pricing.' },
+          { q: 'Can I print on both sides?', a: 'Yes! We offer single-sided and double-sided printing. Double-sided maximizes your brand exposure.' }
+        ]}
+      ]
+    },
+    'Promotional Pens': {
+      headline: 'Custom pens that put your school in their hands.',
+      quote: 'Pens are the most-used promotional item—your school name gets seen every time someone writes.',
+      content: 'Promotional pens are cost-effective giveaways that families keep and use daily. Perfect for open houses, registration events, and staff appreciation gifts.',
+      sections: [
+        { type: 'intro', title: 'Choosing the Right Pen Style', intro: 'Different pen styles suit different purposes and budgets. Consider who will use them and what impression you want to make.' },
+        { type: 'comparison-grid', title: 'Pen Types', columns: [
+          { name: 'Click Pens', bullets: ['Most popular style.', 'Easy one-handed use.', 'Reliable mechanism.', 'Wide variety of colors.'] },
+          { name: 'Twist Pens', bullets: ['Sleek, professional look.', 'No click noise.', 'Smooth writing.', 'Premium appearance.'] },
+          { name: 'Stylus Pens', bullets: ['Works on touchscreens.', 'Dual functionality.', 'Modern appeal.', 'Tech-friendly.'] }
+        ]},
+        { type: 'comparison-grid', title: 'Material Options', columns: [
+          { name: 'Plastic', bullets: ['Most affordable.', 'Lightweight.', 'Huge color variety.'] },
+          { name: 'Metal', bullets: ['Premium weight and feel.', 'Executive appearance.', 'Great for staff gifts.'] },
+          { name: 'Recycled/Eco', bullets: ['Environmentally friendly.', 'Made from recycled materials.', 'Supports green initiatives.'] }
+        ]},
+        { type: 'faq', title: 'Pen Q&A', questions: [
+          { q: 'What is the minimum order?', a: 'Minimum orders typically start at 100 pens to ensure cost-effective pricing.' },
+          { q: 'What ink colors are available?', a: 'Standard options include black and blue ink. Some styles offer red, green, or other colors.' },
+          { q: 'How long will the imprint last?', a: 'Our imprints are designed to last the life of the pen. We use high-quality printing methods that resist wear.' }
+        ]}
+      ]
+    },
+    'Water Bottles': {
+      headline: 'Custom water bottles that promote health and your brand.',
+      quote: 'A quality water bottle gets used every day—your school logo becomes part of their healthy routine.',
+      content: 'Custom water bottles are premium promotional items that recipients keep for years. Perfect for staff appreciation, student rewards, athletics, and fundraising.',
+      sections: [
+        { type: 'intro', title: 'Choosing the Right Bottle', intro: 'Different bottle types suit different needs and budgets. Consider your audience and how the bottles will be used.' },
+        { type: 'comparison-grid', title: 'Bottle Types', columns: [
+          { name: 'Plastic Sport Bottles', bullets: ['Lightweight and affordable.', 'BPA-free options.', 'Perfect for athletics.', 'Squeeze or flip-top lids.'] },
+          { name: 'Stainless Steel', bullets: ['Premium quality.', 'Double-wall insulated.', 'Keeps drinks cold 24hrs.', 'Durable for daily use.'] },
+          { name: 'Aluminum', bullets: ['Eco-friendly choice.', 'Lightweight metal.', 'Recyclable.', 'Great middle option.'] }
+        ]},
+        { type: 'comparison-grid', title: 'Capacity Options', columns: [
+          { name: '16 oz', bullets: ['Compact and portable.', 'Fits in cup holders.', 'Good for younger students.'] },
+          { name: '20-24 oz', bullets: ['Most popular size.', 'All-day hydration.', 'Fits standard holders.'] },
+          { name: '32 oz', bullets: ['Maximum capacity.', 'Great for athletes.', 'Fewer refills needed.'] }
+        ]},
+        { type: 'faq', title: 'Water Bottle Q&A', questions: [
+          { q: 'Are the bottles dishwasher safe?', a: 'Most plastic bottles are top-rack dishwasher safe. Stainless steel bottles should be hand-washed to preserve the finish and insulation.' },
+          { q: 'What is the minimum order?', a: 'Minimum orders typically start at 24-48 bottles depending on the style selected.' }
+        ]}
+      ]
+    },
+    'Lanyards': {
+      headline: 'Custom lanyards for ID badges and school spirit.',
+      quote: 'Every staff member and student wearing your lanyard is a walking ambassador for your school.',
+      content: 'Custom lanyards are essential for ID badges, keys, and access cards. They also serve as great spirit wear and event identification. Durable construction ensures they last the entire school year.',
+      sections: [
+        { type: 'intro', title: 'Understanding Lanyard Options', intro: 'Different materials and attachments serve different needs. Consider durability, comfort, and how the lanyards will be used.' },
+        { type: 'comparison-grid', title: 'Material Options', columns: [
+          { name: 'Polyester', bullets: ['Most popular choice.', 'Smooth, comfortable feel.', 'Vibrant full-color printing.', 'Cost-effective.'] },
+          { name: 'Nylon', bullets: ['Premium satin finish.', 'Extra soft and smooth.', 'Professional appearance.', 'Ideal for executives.'] },
+          { name: 'Eco-Friendly', bullets: ['Made from recycled PET.', 'Bamboo fiber options.', 'Supports green initiatives.', 'Same durability.'] }
+        ]},
+        { type: 'comparison-grid', title: 'Attachment Options', columns: [
+          { name: 'Swivel J-Hook', bullets: ['Standard attachment.', 'Works with most badges.', 'Easy clip-on design.'] },
+          { name: 'Bulldog Clip', bullets: ['Strong grip.', 'Holds thicker badges.', 'Very secure.'] },
+          { name: 'Breakaway Clasp', bullets: ['Safety release.', 'Required in many schools.', 'Prevents choking hazard.'] }
+        ]},
+        { type: 'faq', title: 'Lanyard Q&A', questions: [
+          { q: 'Do you offer breakaway safety clasps?', a: 'Yes! Breakaway clasps are available and recommended for student use. They release under pressure to prevent injury.' },
+          { q: 'What width is best?', a: 'Standard 3/4" width is most popular. 1" width provides more space for logos and text. 1/2" is more compact and economical.' }
+        ]}
+      ]
+    },
+    'Digital Signage Templates': {
+      headline: 'Professional digital signage templates ready to customize.',
+      quote: 'Keep your community informed with eye-catching digital displays that update in seconds.',
+      content: 'Digital signage templates are pre-designed layouts ready for your content. Perfect for lobby displays, cafeteria announcements, and hallway information screens. Simply add your text and images.',
+      sections: [
+        { type: 'intro', title: 'Understanding Template Packages', intro: 'Our template packages are designed for common school communication needs. Each package includes multiple layouts for variety.' },
+        { type: 'comparison-grid', title: 'Template Categories', columns: [
+          { name: 'Announcement Templates', bullets: ['Daily announcements.', 'Event promotions.', 'Important notices.', 'Multiple layouts included.'] },
+          { name: 'Menu Boards', bullets: ['Cafeteria menus.', 'Daily specials.', 'Nutrition information.', 'Easy weekly updates.'] },
+          { name: 'Welcome Displays', bullets: ['Lobby screens.', 'Visitor information.', 'School highlights.', 'Professional appearance.'] }
+        ]},
+        { type: 'faq', title: 'Digital Signage Q&A', questions: [
+          { q: 'What format are the templates?', a: 'Templates are provided in PowerPoint, Canva, and PNG formats for maximum flexibility with your display system.' },
+          { q: 'Can I customize the colors?', a: 'Yes! All templates are fully editable. Match your school colors and add your logo with ease.' },
+          { q: 'What screen sizes are supported?', a: 'Templates are designed for standard 16:9 HD displays (1920x1080) but can be adapted to other sizes.' }
+        ]}
+      ]
+    },
+    'Editable Document Templates': {
+      headline: 'Professional document templates for every school need.',
+      quote: 'Save hours of formatting time with templates designed specifically for school communications.',
+      content: 'Editable document templates provide consistent, professional formatting for all your school communications. From newsletters to permission slips, these templates ensure your documents look polished every time.',
+      sections: [
+        { type: 'intro', title: 'Template Categories', intro: 'Our document templates cover the most common school communication needs. All templates are fully editable in Microsoft Word and Google Docs.' },
+        { type: 'comparison-grid', title: 'Document Types', columns: [
+          { name: 'Newsletters', bullets: ['Monthly templates.', 'Multiple layouts.', 'Photo placeholders.', 'Easy content blocks.'] },
+          { name: 'Forms & Letters', bullets: ['Permission slips.', 'Parent letters.', 'Registration forms.', 'Professional headers.'] },
+          { name: 'Certificates', bullets: ['Achievement awards.', 'Recognition certificates.', 'Completion certificates.', 'Customizable text.'] }
+        ]},
+        { type: 'faq', title: 'Document Template Q&A', questions: [
+          { q: 'What software do I need?', a: 'Templates work with Microsoft Word, Google Docs, and Pages. We provide files compatible with all major platforms.' },
+          { q: 'Can I add my school logo?', a: 'Absolutely! Each template includes designated areas for your logo and school branding elements.' }
+        ]}
+      ]
+    },
+    'Branded Presentation Templates': {
+      headline: 'Presentation templates that make your school shine.',
+      quote: 'From board meetings to parent nights, professional presentations reflect the quality of your school.',
+      content: 'Branded presentation templates ensure every slideshow represents your school professionally. Pre-designed slides for common presentation needs save time while maintaining brand consistency.',
+      sections: [
+        { type: 'intro', title: 'Understanding Presentation Packages', intro: 'Each package includes multiple slide layouts designed for different content types. All templates are fully editable.' },
+        { type: 'comparison-grid', title: 'Slide Categories', columns: [
+          { name: 'Title & Content Slides', bullets: ['Title slides.', 'Section dividers.', 'Text layouts.', 'Image showcases.'] },
+          { name: 'Data Visualization', bullets: ['Charts and graphs.', 'Comparison layouts.', 'Timeline designs.', 'Statistics displays.'] },
+          { name: 'Special Purpose', bullets: ['Staff introductions.', 'Event announcements.', 'Q&A slides.', 'Contact information.'] }
+        ]},
+        { type: 'faq', title: 'Presentation Template Q&A', questions: [
+          { q: 'What software is supported?', a: 'Templates are provided for PowerPoint, Google Slides, and Keynote. Choose your preferred platform.' },
+          { q: 'How many slides are included?', a: 'Each package includes 20-30 unique slide layouts that can be mixed and matched for any presentation.' }
+        ]}
+      ]
+    },
+    'Social Media Graphics Package': {
+      headline: 'Social media templates that engage your community.',
+      quote: 'Consistent, professional social posts build your school brand and keep families connected.',
+      content: 'Social media graphics packages include pre-designed templates for all major platforms. Maintain a professional, consistent presence without spending hours on design.',
+      sections: [
+        { type: 'intro', title: 'Platform-Specific Templates', intro: 'Each package includes templates sized correctly for major social platforms. No more guessing about dimensions.' },
+        { type: 'comparison-grid', title: 'Platforms Included', columns: [
+          { name: 'Facebook', bullets: ['Post templates.', 'Cover photos.', 'Event graphics.', 'Story templates.'] },
+          { name: 'Instagram', bullets: ['Square posts.', 'Stories.', 'Reels covers.', 'Highlights icons.'] },
+          { name: 'Twitter/X', bullets: ['Post graphics.', 'Header images.', 'Announcement cards.'] }
+        ]},
+        { type: 'comparison-grid', title: 'Content Categories', columns: [
+          { name: 'Announcements', bullets: ['Event promotions.', 'Important dates.', 'General updates.'] },
+          { name: 'Recognition', bullets: ['Student spotlights.', 'Staff appreciation.', 'Achievement posts.'] },
+          { name: 'Engagement', bullets: ['Quote graphics.', 'Question posts.', 'Polls and surveys.'] }
+        ]},
+        { type: 'faq', title: 'Social Media Q&A', questions: [
+          { q: 'What format are the templates?', a: 'Templates are provided in Canva format for easy editing, plus PNG files for direct use. PSD files available upon request.' },
+          { q: 'Can I match my school colors?', a: 'Yes! All templates are fully editable. Change colors, fonts, and images to match your brand guidelines.' }
+        ]}
+      ]
+    },
+    'EDDM Direct Mailers': {
+      headline: 'Every Door Direct Mail that reaches entire neighborhoods.',
+      quote: 'EDDM puts your school in every mailbox on every street—reach families you never knew existed.',
+      content: 'Every Door Direct Mail (EDDM) lets you send to every address in specific postal routes without needing a mailing list. Perfect for reaching new families in your area, announcing enrollment periods, and promoting open houses.',
+      sections: [
+        { type: 'intro', title: 'Understanding EDDM', intro: 'EDDM is a USPS program that lets you mail to every address on selected postal routes. No mailing list required—just choose your neighborhoods.' },
+        { type: 'comparison-grid', title: 'Size Options', columns: [
+          { name: '6.5" x 9"', bullets: ['Minimum EDDM size.', 'Most affordable option.', 'Great for simple messages.'] },
+          { name: '6.5" x 12"', bullets: ['Extra-long format.', 'More space for content.', 'Stands out in mailbox.'] },
+          { name: '8.5" x 11"', bullets: ['Letter size flat.', 'Familiar format.', 'Room for details.'] },
+          { name: '9" x 12"', bullets: ['Large postcard style.', 'Maximum impact.', 'Cannot be ignored.'] }
+        ]},
+        { type: 'tips', title: 'EDDM Best Practices', items: [
+          'Target routes within 5 miles of your campus for best results.',
+          'Mail 2-3 weeks before enrollment deadlines or events.',
+          'Include a clear call-to-action and contact information.',
+          'Use both sides—front for attention, back for details.'
+        ]},
+        { type: 'faq', title: 'EDDM Q&A', questions: [
+          { q: 'How do I choose which routes to mail?', a: 'We help you select routes based on demographics, distance from your school, and your budget. Target the neighborhoods most likely to enroll.' },
+          { q: 'What is the minimum quantity?', a: 'USPS requires a minimum of 200 pieces per route, with up to 5,000 pieces per day per ZIP code.' },
+          { q: 'How much does EDDM postage cost?', a: 'EDDM postage is significantly cheaper than first-class mail—typically around $0.20 per piece versus $0.50+ for regular mail.' }
+        ]}
+      ]
+    },
+    'Targeted Direct Mail Postcards': {
+      headline: 'Targeted direct mail that reaches the right families.',
+      quote: 'Why mail to everyone when you can mail to the families most likely to enroll? Targeted mail maximizes your budget.',
+      content: 'Targeted direct mail uses demographic data to reach specific audiences. Mail to families with school-age children, specific income levels, or other criteria that match your ideal enrollment profile.',
+      sections: [
+        { type: 'intro', title: 'Understanding Targeted Mail', intro: 'Unlike EDDM which reaches everyone, targeted mail uses mailing lists to reach specific households. Higher cost per piece but much higher relevance.' },
+        { type: 'comparison-grid', title: 'Targeting Options', columns: [
+          { name: 'Demographic Targeting', bullets: ['Age of children.', 'Household income.', 'Home ownership.', 'Education level.'] },
+          { name: 'Geographic Targeting', bullets: ['Specific ZIP codes.', 'Radius from school.', 'School district boundaries.', 'Neighborhood selection.'] },
+          { name: 'Behavioral Targeting', bullets: ['Private school interest.', 'Education purchasers.', 'New movers to area.', 'Parents of preschoolers.'] }
+        ]},
+        { type: 'comparison-grid', title: 'Postcard Sizes', columns: [
+          { name: '4" x 6"', bullets: ['Standard postcard.', 'Most affordable mailing.', 'Quick, simple message.'] },
+          { name: '5" x 7"', bullets: ['Stands out from mail.', 'More design space.', 'Still cost-effective.'] },
+          { name: '6" x 9"', bullets: ['Large format impact.', 'Room for full message.', 'First-class postage.'] }
+        ]},
+        { type: 'faq', title: 'Targeted Mail Q&A', questions: [
+          { q: 'How do you get the mailing lists?', a: 'We partner with reputable data providers who compile information from public records, surveys, and consumer data. All lists comply with privacy regulations.' },
+          { q: 'What is the minimum order?', a: 'Minimum orders typically start at 500 pieces to make targeted mailing cost-effective.' },
+          { q: 'Can I mail to my own list?', a: 'Absolutely! If you have your own mailing list, we can print and mail to those addresses. We also offer list cleaning and verification services.' }
+        ]}
+      ]
     }
   };
 }
