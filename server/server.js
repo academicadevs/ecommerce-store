@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
 // Load environment variables from server/.env
 dotenv.config({ path: join(__dirname, '.env') });
 
-import { initializeDatabase } from './utils/database.js';
+import { initializeDatabase, syncProductOverviews } from './utils/database.js';
 import { Product } from './models/Product.js';
 import { User } from './models/User.js';
 import authRoutes from './routes/auth.js';
@@ -97,6 +97,9 @@ async function start() {
 
     // Seed sample products
     Product.seedProducts();
+
+    // Sync product overviews (must run after products exist)
+    syncProductOverviews();
 
     // Create default admin user if none exists
     const adminEmail = process.env.ADMIN_EMAIL || 'seth.clark@academicanv.com';

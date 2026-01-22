@@ -355,6 +355,30 @@ export function initializeDatabase() {
   console.log('Database initialized successfully');
 }
 
+// Sync product overviews - call after products are seeded
+export function syncProductOverviews() {
+  try {
+    const allProducts = db.prepare(`SELECT id, name FROM products`).all();
+    const overviewData = getProductOverviews();
+    const updateStmt = db.prepare(`UPDATE products SET overview = ? WHERE name = ?`);
+    let updatedCount = 0;
+
+    for (const product of allProducts) {
+      if (overviewData[product.name]) {
+        updateStmt.run(JSON.stringify(overviewData[product.name]), product.name);
+        updatedCount++;
+      }
+    }
+    if (updatedCount > 0) {
+      console.log(`Synced overview for ${updatedCount} products`);
+    }
+    return updatedCount;
+  } catch (e) {
+    console.error('Error syncing product overviews:', e.message);
+    return 0;
+  }
+}
+
 // Product overview content for backfill migration
 function getProductOverviews() {
   return {
