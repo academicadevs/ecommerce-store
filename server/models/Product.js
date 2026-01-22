@@ -934,6 +934,203 @@ export const Product = {
           'Multiple base options',
           'Replacement flags available'
         ]
+      },
+
+      // ===== DIGITAL PRODUCTS =====
+      {
+        name: 'Digital Signage Templates',
+        description: 'Professional digital signage templates for lobby displays, cafeteria announcements, and hallway screens. Easy to customize with your content.',
+        priceMin: 49.99,
+        priceMax: 199.99,
+        category: 'Digital Products',
+        subcategory: 'Digital Signage',
+        imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600',
+        options: {
+          package: {
+            label: 'Package',
+            values: ['Starter (10 templates)', 'Professional (25 templates)', 'Complete (50 templates)'],
+            default: 'Professional (25 templates)'
+          },
+          style: {
+            label: 'Style',
+            values: ['Modern', 'Classic', 'Playful', 'Mixed'],
+            default: 'Modern'
+          }
+        },
+        features: [
+          'PowerPoint and Canva formats',
+          'Easy text and image editing',
+          'School color customization',
+          'Multiple layout options',
+          'Instant download'
+        ]
+      },
+      {
+        name: 'Editable Document Templates',
+        description: 'Professional document templates for newsletters, permission slips, certificates, and school communications. Fully editable in Word and Google Docs.',
+        priceMin: 29.99,
+        priceMax: 149.99,
+        category: 'Digital Products',
+        subcategory: 'Document Templates',
+        imageUrl: 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=600',
+        options: {
+          package: {
+            label: 'Package',
+            values: ['Essentials (15 templates)', 'Professional (35 templates)', 'Complete (75 templates)'],
+            default: 'Professional (35 templates)'
+          },
+          category: {
+            label: 'Category Focus',
+            values: ['General', 'Newsletters', 'Forms & Letters', 'Certificates', 'All Categories'],
+            default: 'All Categories'
+          }
+        },
+        features: [
+          'Word and Google Docs compatible',
+          'Print-ready formatting',
+          'School branding placeholders',
+          'Professional typography',
+          'Instant download'
+        ]
+      },
+      {
+        name: 'Branded Presentation Templates',
+        description: 'Professional presentation templates for board meetings, parent nights, and staff presentations. Consistent branding across all your slideshows.',
+        priceMin: 39.99,
+        priceMax: 179.99,
+        category: 'Digital Products',
+        subcategory: 'Presentation Templates',
+        imageUrl: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=600',
+        options: {
+          package: {
+            label: 'Package',
+            values: ['Starter (20 slides)', 'Professional (50 slides)', 'Complete (100 slides)'],
+            default: 'Professional (50 slides)'
+          },
+          software: {
+            label: 'Software',
+            values: ['PowerPoint', 'Google Slides', 'Keynote', 'All Formats'],
+            default: 'All Formats'
+          }
+        },
+        features: [
+          'Multiple software formats',
+          'Data visualization slides',
+          'Easy color customization',
+          'Animation included',
+          'Instant download'
+        ]
+      },
+      {
+        name: 'Social Media Graphics Package',
+        description: 'Complete social media template package for Facebook, Instagram, and Twitter. Maintain consistent branding across all platforms.',
+        priceMin: 49.99,
+        priceMax: 199.99,
+        category: 'Digital Products',
+        subcategory: 'Social Media Templates',
+        imageUrl: 'https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=600',
+        options: {
+          package: {
+            label: 'Package',
+            values: ['Starter (30 templates)', 'Professional (75 templates)', 'Complete (150 templates)'],
+            default: 'Professional (75 templates)'
+          },
+          platforms: {
+            label: 'Platforms',
+            values: ['Facebook Only', 'Instagram Only', 'All Platforms'],
+            default: 'All Platforms'
+          }
+        },
+        features: [
+          'Canva and PNG formats',
+          'Platform-specific sizing',
+          'Story and post templates',
+          'Easy brand customization',
+          'Instant download'
+        ]
+      },
+
+      // ===== DIRECT MAIL =====
+      {
+        name: 'EDDM Direct Mailers',
+        description: 'Every Door Direct Mail postcards to reach entire neighborhoods without a mailing list. Cost-effective way to reach new families in your area.',
+        priceMin: 199.99,
+        priceMax: 1499.99,
+        category: 'Marketing Materials',
+        subcategory: 'Direct Mail',
+        imageUrl: 'https://images.unsplash.com/photo-1579275542618-a1dfed5f54ba?w=600',
+        options: {
+          size: {
+            label: 'Size',
+            values: ['6.5" x 9"', '6.5" x 12"', '8.5" x 11"', '9" x 12"'],
+            default: '6.5" x 9"'
+          },
+          paperType: {
+            label: 'Paper Type',
+            values: ['14pt Cardstock Gloss', '14pt Cardstock Matte', '16pt Cardstock'],
+            default: '14pt Cardstock Gloss'
+          },
+          quantity: {
+            label: 'Quantity',
+            values: ['500', '1000', '2500', '5000', '10000'],
+            default: '1000'
+          },
+          turnaround: {
+            label: 'Printing Time',
+            values: ['5 Business Days', '7 Business Days', '10 Business Days'],
+            default: '7 Business Days'
+          }
+        },
+        features: [
+          'No mailing list required',
+          'USPS EDDM compliant sizes',
+          'Target specific postal routes',
+          'Significant postage savings',
+          'Full-service mailing available'
+        ]
+      },
+      {
+        name: 'Targeted Direct Mail Postcards',
+        description: 'Targeted direct mail postcards using demographic data to reach families most likely to enroll. Higher ROI through precision targeting.',
+        priceMin: 299.99,
+        priceMax: 2499.99,
+        category: 'Marketing Materials',
+        subcategory: 'Direct Mail',
+        imageUrl: 'https://images.unsplash.com/photo-1526628953301-3e589a6a8b74?w=600',
+        options: {
+          size: {
+            label: 'Size',
+            values: ['4" x 6"', '5" x 7"', '6" x 9"'],
+            default: '6" x 9"'
+          },
+          paperType: {
+            label: 'Paper Type',
+            values: ['14pt Cardstock Gloss', '14pt Cardstock Matte', '16pt Cardstock'],
+            default: '14pt Cardstock Gloss'
+          },
+          targeting: {
+            label: 'Targeting',
+            values: ['Families with Children', 'Income Level', 'New Movers', 'Custom Criteria'],
+            default: 'Families with Children'
+          },
+          quantity: {
+            label: 'Quantity',
+            values: ['500', '1000', '2500', '5000', '10000'],
+            default: '1000'
+          },
+          turnaround: {
+            label: 'Printing Time',
+            values: ['7 Business Days', '10 Business Days', '14 Business Days'],
+            default: '10 Business Days'
+          }
+        },
+        features: [
+          'Demographic targeting included',
+          'Mailing list provided',
+          'Higher response rates',
+          'Full-service mailing',
+          'Campaign tracking available'
+        ]
       }
     ];
 
