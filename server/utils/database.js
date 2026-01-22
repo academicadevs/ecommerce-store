@@ -299,6 +299,31 @@ export function initializeDatabase() {
     // Column already exists
   }
 
+  // Migration: Add sortOrder column to products for custom ordering
+  try {
+    db.exec(`ALTER TABLE products ADD COLUMN sortOrder INTEGER DEFAULT 0`);
+  } catch (e) {
+    // Column already exists
+  }
+
+  // Backfill sortOrder for existing products (order by category, then name)
+  try {
+    const productsWithoutOrder = db.prepare(`
+      SELECT id FROM products WHERE sortOrder = 0 OR sortOrder IS NULL
+      ORDER BY category, name
+    `).all();
+
+    if (productsWithoutOrder.length > 0) {
+      const updateStmt = db.prepare(`UPDATE products SET sortOrder = ? WHERE id = ?`);
+      productsWithoutOrder.forEach((product, index) => {
+        updateStmt.run(index + 1, product.id);
+      });
+      console.log(`Backfilled sortOrder for ${productsWithoutOrder.length} products`);
+    }
+  } catch (e) {
+    console.error('Error backfilling product sortOrder:', e.message);
+  }
+
   console.log('Database initialized successfully');
 }
 

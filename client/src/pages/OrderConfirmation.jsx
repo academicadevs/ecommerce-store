@@ -34,9 +34,9 @@ export default function OrderConfirmation() {
   if (!order) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Order Not Found</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Request Not Found</h2>
         <Link to="/orders" className="btn btn-primary">
-          View All Orders
+          View All Requests
         </Link>
       </div>
     );
@@ -51,9 +51,9 @@ export default function OrderConfirmation() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Order Placed Successfully!</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Request Submitted Successfully!</h1>
         <p className="text-gray-600">
-          Thank you for your order. We've sent a confirmation email to{' '}
+          Thank you for your request. We've sent a confirmation email to{' '}
           <strong>{order.shippingInfo.email}</strong>.
         </p>
       </div>
@@ -63,11 +63,11 @@ export default function OrderConfirmation() {
         <div className="bg-primary-600 text-white px-6 py-4">
           <div className="flex justify-between items-center">
             <div>
-              <p className="text-primary-100 text-sm">Order Number</p>
+              <p className="text-primary-100 text-sm">Request Number</p>
               <p className="font-mono font-bold text-lg">{order.orderNumber || `#${order.id.slice(0, 8).toUpperCase()}`}</p>
             </div>
             <div className="text-right">
-              <p className="text-primary-100 text-sm">Order Date</p>
+              <p className="text-primary-100 text-sm">Request Date</p>
               <p className="font-medium">{new Date(order.createdAt).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' })}</p>
             </div>
           </div>
@@ -75,7 +75,7 @@ export default function OrderConfirmation() {
 
         <div className="p-6">
           {/* Items */}
-          <h3 className="font-semibold text-gray-900 mb-4">Order Items</h3>
+          <h3 className="font-semibold text-gray-900 mb-4">Request Items</h3>
           <div className="space-y-3 mb-6">
             {order.items.map((item, index) => {
               const opts = item.selectedOptions || item.options || {};
@@ -158,19 +158,19 @@ export default function OrderConfirmation() {
       <div className="bg-blue-50 rounded-lg p-6 mt-6">
         <h3 className="font-semibold text-blue-900 mb-2">What happens next?</h3>
         <ul className="text-blue-800 space-y-2 text-sm">
-          <li>1. Our team will review your order and reach out if we have any questions.</li>
-          <li>2. You'll receive updates on your order status via email.</li>
-          <li>3. Once your order is ready, we'll coordinate delivery with you.</li>
+          <li>1. Our team will review your request and reach out if we have any questions.</li>
+          <li>2. You'll receive updates on your request status via email.</li>
+          <li>3. Once your request is ready, we'll coordinate delivery with you.</li>
         </ul>
       </div>
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-4 mt-8">
         <Link to="/orders" className="btn btn-primary flex-1 text-center py-3">
-          View All Orders
+          View All Requests
         </Link>
         <Link to="/products" className="btn btn-secondary flex-1 text-center py-3">
-          Continue Shopping
+          Browse Products
         </Link>
       </div>
     </div>

@@ -12,45 +12,74 @@ router.use(authenticate);
 // Create a new order (checkout)
 router.post('/', async (req, res) => {
   try {
-    const { shippingInfo, notes } = req.body;
+    const { shippingInfo, notes, isCustomRequest, isMetaAdsCampaign, customRequestData, onBehalfOfUserId } = req.body;
 
-    // Validate school/contact info
-    if (!shippingInfo || !shippingInfo.schoolName || !shippingInfo.contactName ||
-        !shippingInfo.positionTitle || !shippingInfo.principalName ||
-        !shippingInfo.email || !shippingInfo.phone) {
-      return res.status(400).json({ error: 'Complete school and contact information is required' });
+    // For custom requests and meta ads campaigns, cart can be empty
+    const isSpecialRequest = isCustomRequest || isMetaAdsCampaign;
+
+    // Validate school/contact info (relaxed for special requests)
+    if (!shippingInfo || !shippingInfo.email) {
+      return res.status(400).json({ error: 'Contact information is required' });
     }
 
-    // Get cart items
-    const cartItems = Cart.getByUserId(req.user.id);
-
-    if (cartItems.length === 0) {
-      return res.status(400).json({ error: 'Cart is empty' });
+    // Determine the user ID for the order
+    // Admins can create orders on behalf of other users
+    let orderUserId = req.user.id;
+    if (onBehalfOfUserId && req.user.role === 'admin') {
+      orderUserId = onBehalfOfUserId;
     }
 
-    // Calculate total
-    const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    let orderItems = [];
+    let total = 0;
 
-    // Format items for order - include all configurator data
-    const orderItems = cartItems.map(item => ({
-      productId: item.productId,
-      name: item.name,
-      price: item.price,
-      quantity: item.quantity,
-      selectedOptions: item.selectedOptions || null
-    }));
+    if (!isSpecialRequest) {
+      // Regular order - get cart items
+      const cartItems = Cart.getByUserId(req.user.id);
+
+      if (cartItems.length === 0) {
+        return res.status(400).json({ error: 'Cart is empty' });
+      }
+
+      // Calculate total
+      total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+      // Format items for order - include all configurator data
+      orderItems = cartItems.map(item => ({
+        productId: item.productId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        selectedOptions: item.selectedOptions || null
+      }));
+    } else {
+      // Special request - create item with structured request data
+      const requestType = isMetaAdsCampaign ? 'Meta Ads Campaign Request' : 'Custom Request';
+      const { customRequestData } = req.body;
+
+      orderItems = [{
+        productId: null,
+        name: customRequestData?.projectTitle || customRequestData?.campaignName || requestType,
+        price: 0,
+        quantity: 1,
+        selectedOptions: customRequestData || null,
+        isSpecialRequest: true,
+        requestType: isMetaAdsCampaign ? 'meta-ads' : 'custom'
+      }];
+    }
 
     // Create order
     const order = Order.create({
-      userId: req.user.id,
+      userId: orderUserId,
       items: orderItems,
       total,
       shippingInfo,
       notes
     });
 
-    // Clear cart
-    Cart.clear(req.user.id);
+    // Clear cart only for regular orders
+    if (!isSpecialRequest) {
+      Cart.clear(req.user.id);
+    }
 
     // Send confirmation emails
     try {
@@ -61,7 +90,7 @@ router.post('/', async (req, res) => {
     }
 
     res.status(201).json({
-      message: 'Order placed successfully',
+      message: 'Request submitted successfully',
       order
     });
   } catch (error) {

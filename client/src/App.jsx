@@ -9,6 +9,7 @@ import Home from './pages/Home';
 import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
 import CustomRequest from './pages/CustomRequest';
+import MetaAdsCampaign from './pages/MetaAdsCampaign';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import OrderConfirmation from './pages/OrderConfirmation';
@@ -75,6 +76,7 @@ export default function App() {
               <Route path="/products" element={<Products />} />
               <Route path="/products/:id" element={<ProductDetail />} />
               <Route path="/custom-request" element={<CustomRequest />} />
+              <Route path="/meta-ads" element={<MetaAdsCampaign />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
 

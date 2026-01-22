@@ -6,7 +6,7 @@ import EmailComposer from './EmailComposer';
 import ProofManager from './ProofManager';
 import { adminAPI } from '../../services/api';
 
-const statusOptions = ['new', 'waiting_feedback', 'in_progress', 'on_hold', 'waiting_signoff', 'sent_to_print', 'completed'];
+const statusOptions = ['new', 'waiting_feedback', 'in_progress', 'submitted_to_kimp360', 'waiting_signoff', 'sent_to_print', 'completed', 'on_hold'];
 
 const statusColors = {
   new: 'bg-blue-100 text-blue-800',
@@ -14,16 +14,18 @@ const statusColors = {
   in_progress: 'bg-indigo-100 text-indigo-800',
   on_hold: 'bg-orange-100 text-orange-800',
   waiting_signoff: 'bg-purple-100 text-purple-800',
+  submitted_to_kimp360: 'bg-pink-100 text-pink-800',
   sent_to_print: 'bg-cyan-100 text-cyan-800',
   completed: 'bg-green-100 text-green-800',
 };
 
 const statusLabels = {
-  new: 'New',
+  new: 'New Request Received',
   waiting_feedback: 'Waiting for Feedback',
   in_progress: 'In Progress',
   on_hold: 'On Hold',
   waiting_signoff: 'Waiting for Sign Off',
+  submitted_to_kimp360: 'Submitted to Kimp360',
   sent_to_print: 'Sent to Print',
   completed: 'Completed',
 };
@@ -231,7 +233,7 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
       onClose={onClose}
       title={
         <div className="flex items-center gap-3">
-          <span>Order {order.orderNumber || `#${order.id.slice(0, 8).toUpperCase()}`}</span>
+          <span>Request {order.orderNumber || `#${order.id.slice(0, 8).toUpperCase()}`}</span>
           <span className={`px-2 py-0.5 rounded-full text-sm ${statusColors[order.status]}`}>
             {statusLabels[order.status]}
           </span>
@@ -274,7 +276,7 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
             </select>
           </div>
           <div className="ml-auto text-sm text-gray-500">
-            Placed {new Date(order.createdAt).toLocaleDateString('en-US', {
+            Submitted {new Date(order.createdAt).toLocaleDateString('en-US', {
               weekday: 'long',
               month: 'long',
               day: 'numeric',
@@ -448,13 +450,13 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
             </div>
           </div>
 
-          {/* Column 2: Order Items */}
+          {/* Column 2: Request Items */}
           <div>
             <h3 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
               <svg className="w-5 h-5 text-academica-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
-              Order Items ({order.items?.length || 0})
+              Request Items ({order.items?.length || 0})
             </h3>
             <div className="max-h-[calc(90vh-300px)] overflow-y-auto">
               <OrderItemEditor

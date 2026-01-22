@@ -14,13 +14,20 @@ const statusColors = {
 };
 
 const statusLabels = {
-  new: 'New',
+  new: 'New Request Received',
   waiting_feedback: 'Waiting for Feedback',
   in_progress: 'In Progress',
   on_hold: 'On Hold',
   waiting_signoff: 'Waiting for Sign Off',
   sent_to_print: 'Sent to Print',
   completed: 'Completed',
+};
+
+// Get display status for users (hide internal statuses)
+const getDisplayStatus = (status) => {
+  // Submitted to Kimp360 is internal - show as In Progress to users
+  if (status === 'submitted_to_kimp360') return 'in_progress';
+  return status;
 };
 
 export default function OrderHistory() {
@@ -52,17 +59,17 @@ export default function OrderHistory() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Order History</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-8">My Requests</h1>
 
       {orders.length === 0 ? (
         <div className="text-center py-12">
           <svg className="w-24 h-24 text-gray-300 mx-auto mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
           </svg>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">No orders yet</h2>
-          <p className="text-gray-600 mb-8">When you place orders, they will appear here.</p>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">No requests yet</h2>
+          <p className="text-gray-600 mb-8">When you submit requests, they will appear here.</p>
           <Link to="/products" className="btn btn-primary">
-            Start Shopping
+            Browse Products
           </Link>
         </div>
       ) : (
@@ -80,12 +87,12 @@ export default function OrderHistory() {
                       <span className="font-mono font-bold text-gray-900">
                         {order.orderNumber || `#${order.id.slice(0, 8).toUpperCase()}`}
                       </span>
-                      <span className={`badge ${statusColors[order.status] || 'badge-info'}`}>
-                        {statusLabels[order.status] || order.status}
+                      <span className={`badge ${statusColors[getDisplayStatus(order.status)] || 'badge-info'}`}>
+                        {statusLabels[getDisplayStatus(order.status)] || order.status}
                       </span>
                     </div>
                     <p className="text-sm text-gray-500">
-                      Placed on {new Date(order.createdAt).toLocaleDateString('en-US', {
+                      Submitted on {new Date(order.createdAt).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric',

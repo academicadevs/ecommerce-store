@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -40,6 +41,38 @@ const upload = multer({
       cb(null, true);
     } else {
       cb(new Error('Invalid file type'));
+    }
+  }
+});
+
+// Configure multer for product images
+const productUploadsDir = path.join(
+  process.env.UPLOADS_PATH || path.join(__dirname, '../uploads'),
+  'products'
+);
+
+const productStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, productUploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueId = uuidv4();
+    const ext = path.extname(file.originalname);
+    cb(null, `${uniqueId}${ext}`);
+  }
+});
+
+const productImageUpload = multer({
+  storage: productStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit per image
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const ext = path.extname(file.originalname).toLowerCase().slice(1);
+    const mimeOk = /^image\/(jpeg|png|gif|webp)$/.test(file.mimetype);
+    if (allowedTypes.test(ext) && mimeOk) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (JPG, PNG, GIF, WebP) are allowed'));
     }
   }
 });
@@ -160,6 +193,23 @@ router.get('/products', (req, res) => {
   }
 });
 
+// Reorder products (must be before :id routes)
+router.put('/products/reorder', (req, res) => {
+  try {
+    const { productIds } = req.body;
+
+    if (!Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({ error: 'productIds must be a non-empty array' });
+    }
+
+    Product.reorder(productIds);
+    res.json({ message: 'Products reordered successfully' });
+  } catch (error) {
+    console.error('Error reordering products:', error);
+    res.status(500).json({ error: 'Failed to reorder products' });
+  }
+});
+
 router.post('/products', (req, res) => {
   try {
     const { name, description, category, subcategory, imageUrl, images, options, features, inStock } = req.body;
@@ -229,6 +279,119 @@ router.delete('/products/:id', (req, res) => {
   }
 });
 
+// Product image upload
+router.post('/products/:id/images', productImageUpload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const product = Product.findById(req.params.id);
+    if (!product) {
+      // Delete uploaded file since product doesn't exist
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    // Check image count limit (max 8)
+    const currentImages = product.images || [];
+    if (currentImages.length >= 8) {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ error: 'Maximum 8 images allowed per product' });
+    }
+
+    const imageData = {
+      url: `/uploads/products/${req.file.filename}`,
+      filename: req.file.originalname,
+      uploaded: true
+    };
+
+    const updatedImages = [...currentImages, imageData];
+    const updatedProduct = Product.update(req.params.id, {
+      ...product,
+      images: updatedImages
+    });
+
+    res.json({
+      message: 'Image uploaded successfully',
+      image: imageData,
+      product: updatedProduct
+    });
+  } catch (error) {
+    console.error('Error uploading product image:', error);
+    res.status(500).json({ error: 'Failed to upload image' });
+  }
+});
+
+// Reorder product images
+router.put('/products/:id/images/reorder', (req, res) => {
+  try {
+    const { images } = req.body;
+
+    if (!Array.isArray(images)) {
+      return res.status(400).json({ error: 'Images must be an array' });
+    }
+
+    const product = Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    const updatedProduct = Product.update(req.params.id, {
+      ...product,
+      images: images
+    });
+
+    res.json({ message: 'Images reordered', product: updatedProduct });
+  } catch (error) {
+    console.error('Error reordering images:', error);
+    res.status(500).json({ error: 'Failed to reorder images' });
+  }
+});
+
+// Delete product image
+router.delete('/products/:id/images/:imageIndex', (req, res) => {
+  try {
+    const product = Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    const imageIndex = parseInt(req.params.imageIndex, 10);
+    const images = product.images || [];
+
+    if (imageIndex < 0 || imageIndex >= images.length) {
+      return res.status(400).json({ error: 'Invalid image index' });
+    }
+
+    const imageToDelete = images[imageIndex];
+
+    // Delete file from disk if it was an uploaded file
+    if (imageToDelete && typeof imageToDelete === 'object' && imageToDelete.uploaded) {
+      const filePath = path.join(
+        process.env.UPLOADS_PATH || path.join(__dirname, '../uploads'),
+        'products',
+        path.basename(imageToDelete.url)
+      );
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    // Remove from array
+    const updatedImages = images.filter((_, idx) => idx !== imageIndex);
+    const updatedProduct = Product.update(req.params.id, {
+      ...product,
+      images: updatedImages
+    });
+
+    res.json({ message: 'Image deleted', product: updatedProduct });
+  } catch (error) {
+    console.error('Error deleting product image:', error);
+    res.status(500).json({ error: 'Failed to delete image' });
+  }
+});
+
 // Order management
 router.get('/orders', (req, res) => {
   try {
@@ -256,7 +419,7 @@ router.put('/orders/:id', (req, res) => {
       return res.status(400).json({ error: 'Status is required' });
     }
 
-    const validStatuses = ['new', 'waiting_feedback', 'in_progress', 'on_hold', 'waiting_signoff', 'sent_to_print', 'completed'];
+    const validStatuses = ['new', 'waiting_feedback', 'in_progress', 'submitted_to_kimp360', 'waiting_signoff', 'sent_to_print', 'completed', 'on_hold'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }

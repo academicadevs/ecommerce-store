@@ -46,7 +46,7 @@ export default function Cart() {
 
             <div className="flex flex-col sm:flex-row gap-4">
               <Link to="/checkout" className="btn btn-primary flex-1 text-center py-3">
-                Proceed to Checkout
+                Proceed to Submit Request
               </Link>
               <Link to="/products" className="btn btn-secondary flex-1 text-center py-3">
                 Continue Shopping

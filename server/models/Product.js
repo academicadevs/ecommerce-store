@@ -6,9 +6,13 @@ export const Product = {
     const id = uuidv4();
     const now = new Date().toISOString();
 
+    // Get the max sortOrder and add 1 for new products
+    const maxOrderResult = db.prepare('SELECT MAX(sortOrder) as maxOrder FROM products').get();
+    const sortOrder = (maxOrderResult.maxOrder || 0) + 1;
+
     const stmt = db.prepare(`
-      INSERT INTO products (id, name, description, priceMin, priceMax, category, subcategory, imageUrl, images, options, features, inStock, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO products (id, name, description, priceMin, priceMax, category, subcategory, imageUrl, images, options, features, inStock, sortOrder, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -16,10 +20,10 @@ export const Product = {
       imageUrl || null, images ? JSON.stringify(images) : null,
       options ? JSON.stringify(options) : null,
       features ? JSON.stringify(features) : null,
-      inStock ? 1 : 0, now, now
+      inStock ? 1 : 0, sortOrder, now, now
     );
 
-    return { id, name, description, priceMin, priceMax, category, subcategory, imageUrl, images, options, features, inStock, createdAt: now, updatedAt: now };
+    return { id, name, description, priceMin, priceMax, category, subcategory, imageUrl, images, options, features, inStock, sortOrder, createdAt: now, updatedAt: now };
   },
 
   findById: (id) => {
@@ -30,6 +34,8 @@ export const Product = {
       product.images = product.images ? JSON.parse(product.images) : [];
       product.options = product.options ? JSON.parse(product.options) : null;
       product.features = product.features ? JSON.parse(product.features) : [];
+      product.overview = product.overview ? JSON.parse(product.overview) : null;
+      product.sortOrder = product.sortOrder || 0;
     }
     return product;
   },
@@ -58,7 +64,7 @@ export const Product = {
       params.push(inStock ? 1 : 0);
     }
 
-    query += ' ORDER BY category, name';
+    query += ' ORDER BY sortOrder ASC, name ASC';
 
     const stmt = db.prepare(query);
     const products = stmt.all(...params);
@@ -68,7 +74,9 @@ export const Product = {
       inStock: Boolean(p.inStock),
       images: p.images ? JSON.parse(p.images) : [],
       options: p.options ? JSON.parse(p.options) : null,
-      features: p.features ? JSON.parse(p.features) : []
+      features: p.features ? JSON.parse(p.features) : [],
+      overview: p.overview ? JSON.parse(p.overview) : null,
+      sortOrder: p.sortOrder || 0
     }));
   },
 
@@ -96,6 +104,21 @@ export const Product = {
   delete: (id) => {
     const stmt = db.prepare('DELETE FROM products WHERE id = ?');
     stmt.run(id);
+  },
+
+  // Reorder products - accepts an array of product IDs in the desired order
+  reorder: (productIds) => {
+    const updateStmt = db.prepare('UPDATE products SET sortOrder = ?, updatedAt = ? WHERE id = ?');
+    const now = new Date().toISOString();
+
+    const transaction = db.transaction(() => {
+      productIds.forEach((id, index) => {
+        updateStmt.run(index + 1, now, id);
+      });
+    });
+
+    transaction();
+    return true;
   },
 
   getCategories: () => {

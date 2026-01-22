@@ -14,13 +14,20 @@ const statusColors = {
 };
 
 const statusLabels = {
-  new: 'New',
+  new: 'New Request Received',
   waiting_feedback: 'Waiting for Feedback',
   in_progress: 'In Progress',
   on_hold: 'On Hold',
   waiting_signoff: 'Waiting for Sign Off',
   sent_to_print: 'Sent to Print',
   completed: 'Completed',
+};
+
+// Get display status for users (hide internal statuses)
+const getDisplayStatus = (status) => {
+  // Submitted to Kimp360 is internal - show as In Progress to users
+  if (status === 'submitted_to_kimp360') return 'in_progress';
+  return status;
 };
 
 export default function OrderDetail() {
@@ -54,9 +61,9 @@ export default function OrderDetail() {
   if (!order) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Order Not Found</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Request Not Found</h2>
         <Link to="/orders" className="btn btn-primary">
-          View All Orders
+          View All Requests
         </Link>
       </div>
     );
@@ -69,7 +76,7 @@ export default function OrderDetail() {
         <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
-        Back to Orders
+        Back to Requests
       </Link>
 
       {/* Order Header */}
@@ -78,10 +85,10 @@ export default function OrderDetail() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
               <h1 className="text-xl font-bold text-gray-900">
-                Order {order.orderNumber || `#${order.id.slice(0, 8).toUpperCase()}`}
+                Request {order.orderNumber || `#${order.id.slice(0, 8).toUpperCase()}`}
               </h1>
               <p className="text-sm text-gray-500">
-                Placed on {new Date(order.createdAt).toLocaleDateString('en-US', {
+                Submitted on {new Date(order.createdAt).toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric',
@@ -91,15 +98,15 @@ export default function OrderDetail() {
                 })} PT
               </p>
             </div>
-            <span className={`badge ${statusColors[order.status] || 'badge-info'} text-sm px-3 py-1`}>
-              {statusLabels[order.status] || order.status}
+            <span className={`badge ${statusColors[getDisplayStatus(order.status)] || 'badge-info'} text-sm px-3 py-1`}>
+              {statusLabels[getDisplayStatus(order.status)] || order.status}
             </span>
           </div>
         </div>
 
         <div className="p-6">
           {/* Items */}
-          <h3 className="font-semibold text-gray-900 mb-4">Order Items</h3>
+          <h3 className="font-semibold text-gray-900 mb-4">Request Items</h3>
           <div className="space-y-3 mb-6">
             {order.items.map((item, index) => {
               const opts = item.selectedOptions || item.options || {};
@@ -181,7 +188,7 @@ export default function OrderDetail() {
       {/* Actions */}
       <div className="flex gap-4 mt-8">
         <Link to="/products" className="btn btn-primary flex-1 text-center py-3">
-          Order Again
+          Submit New Request
         </Link>
       </div>
     </div>

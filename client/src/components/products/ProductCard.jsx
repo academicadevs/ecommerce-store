@@ -12,6 +12,16 @@ export default function ProductCard({ product }) {
     return images[category] || 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=400&h=300&fit=crop';
   };
 
+  // Get primary image: first from images array, then imageUrl, then category fallback
+  const getPrimaryImage = () => {
+    if (product.images?.length > 0) {
+      const firstImage = product.images[0];
+      // Handle both string URLs and object format
+      return typeof firstImage === 'string' ? firstImage : firstImage?.url;
+    }
+    return product.imageUrl || getCategoryImage(product.category);
+  };
+
   return (
     <Link
       to={`/products/${product.id}`}
@@ -20,7 +30,7 @@ export default function ProductCard({ product }) {
       {/* Product Image */}
       <div className="relative h-48 bg-gray-100 overflow-hidden">
         <img
-          src={product.imageUrl || getCategoryImage(product.category)}
+          src={getPrimaryImage()}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />

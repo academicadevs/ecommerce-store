@@ -5,24 +5,26 @@ import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import OrderDetailModal from '../../components/admin/OrderDetailModal';
 
-const statusOptions = ['new', 'waiting_feedback', 'in_progress', 'on_hold', 'waiting_signoff', 'sent_to_print', 'completed'];
+const statusOptions = ['new', 'waiting_feedback', 'in_progress', 'submitted_to_kimp360', 'waiting_signoff', 'sent_to_print', 'completed', 'on_hold'];
 
 const statusColors = {
-  new: 'bg-blue-100 text-blue-800',
-  waiting_feedback: 'bg-yellow-100 text-yellow-800',
-  in_progress: 'bg-indigo-100 text-indigo-800',
-  on_hold: 'bg-orange-100 text-orange-800',
-  waiting_signoff: 'bg-purple-100 text-purple-800',
-  sent_to_print: 'bg-cyan-100 text-cyan-800',
-  completed: 'bg-green-100 text-green-800',
+  new: 'bg-blue-100 text-blue-800 border-blue-300',
+  waiting_feedback: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+  in_progress: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+  on_hold: 'bg-orange-100 text-orange-800 border-orange-300',
+  waiting_signoff: 'bg-purple-100 text-purple-800 border-purple-300',
+  submitted_to_kimp360: 'bg-pink-100 text-pink-800 border-pink-300',
+  sent_to_print: 'bg-cyan-100 text-cyan-800 border-cyan-300',
+  completed: 'bg-green-100 text-green-800 border-green-300',
 };
 
 const statusLabels = {
-  new: 'New',
+  new: 'New Request Received',
   waiting_feedback: 'Waiting for Feedback',
   in_progress: 'In Progress',
   on_hold: 'On Hold',
   waiting_signoff: 'Waiting for Sign Off',
+  submitted_to_kimp360: 'Submitted to Kimp360',
   sent_to_print: 'Sent to Print',
   completed: 'Completed',
 };
@@ -170,11 +172,11 @@ export default function ManageOrders() {
 
   // Get label for current view filter
   const getViewFilterLabel = () => {
-    if (viewFilter === 'all') return 'All Orders';
-    if (viewFilter === 'mine') return 'My Orders';
+    if (viewFilter === 'all') return 'All Requests';
+    if (viewFilter === 'mine') return 'My Requests';
     if (viewFilter === 'unassigned') return 'Unassigned';
     const admin = admins.find(a => a.id === viewFilter);
-    return admin ? admin.contactName || admin.email : 'All Orders';
+    return admin ? admin.contactName || admin.email : 'All Requests';
   };
 
   if (loading) {
@@ -194,8 +196,8 @@ export default function ManageOrders() {
         </Link>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-charcoal">Manage Orders</h1>
-            <p className="text-gray-600 mt-1">{filteredOrders.length} of {orders.length} orders {viewFilter !== 'all' && `(${getViewFilterLabel()})`}</p>
+            <h1 className="text-3xl font-bold text-charcoal">Manage Requests</h1>
+            <p className="text-gray-600 mt-1">{filteredOrders.length} of {orders.length} requests {viewFilter !== 'all' && `(${getViewFilterLabel()})`}</p>
           </div>
 
           {/* Filters */}
@@ -207,7 +209,7 @@ export default function ManageOrders() {
               </svg>
               <input
                 type="text"
-                placeholder="Search orders..."
+                placeholder="Search requests..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="input pl-10 w-48"
@@ -220,8 +222,8 @@ export default function ManageOrders() {
               onChange={(e) => setViewFilter(e.target.value)}
               className="input py-2 w-44"
             >
-              <option value="all">All Orders</option>
-              <option value="mine">My Orders</option>
+              <option value="all">All Requests</option>
+              <option value="mine">My Requests</option>
               <option value="unassigned">Unassigned</option>
               {admins.length > 0 && (
                 <optgroup label="By Admin">
@@ -252,21 +254,22 @@ export default function ManageOrders() {
       </div>
 
       {/* Status Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-8">
+      <div className="grid grid-cols-4 md:grid-cols-8 gap-2 mb-8">
         {statusOptions.map((status) => {
           const count = orders.filter(o => o.status === status).length;
+          const isSelected = filterStatus === status;
           return (
             <button
               key={status}
-              onClick={() => setFilterStatus(status)}
-              className={`p-4 rounded-lg border-2 transition-colors ${
-                filterStatus === status
-                  ? 'border-academica-blue bg-academica-blue-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
+              onClick={() => setFilterStatus(isSelected ? 'all' : status)}
+              className={`p-3 rounded-lg border transition-all ${statusColors[status]} ${
+                isSelected
+                  ? 'ring-2 ring-offset-1 ring-gray-800'
+                  : 'opacity-80 hover:opacity-100'
               }`}
             >
-              <div className="text-2xl font-bold text-charcoal">{count}</div>
-              <div className="text-xs text-gray-600">{statusLabels[status]}</div>
+              <div className="text-2xl font-bold">{count}</div>
+              <div className="text-xs leading-tight">{statusLabels[status]}</div>
             </button>
           );
         })}
@@ -278,13 +281,13 @@ export default function ManageOrders() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           <h3 className="text-lg font-medium text-charcoal mb-1">
-            {viewFilter === 'mine' ? 'No orders assigned to you' : filterStatus === 'all' ? 'No orders yet' : `No ${statusLabels[filterStatus] || filterStatus} orders`}
+            {viewFilter === 'mine' ? 'No requests assigned to you' : filterStatus === 'all' ? 'No requests yet' : `No ${statusLabels[filterStatus] || filterStatus} requests`}
           </h3>
           <p className="text-gray-500">
             {viewFilter === 'mine'
-              ? 'Orders assigned to you will appear here.'
+              ? 'Requests assigned to you will appear here.'
               : filterStatus === 'all'
-              ? 'Orders will appear here when customers place them.'
+              ? 'Requests will appear here when users submit them.'
               : 'Try selecting a different filter.'}
           </p>
         </div>

@@ -4,11 +4,11 @@ import { adminAPI } from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const categoryData = {
-  'Marketing Materials': ['Flyers', 'Postcards', 'Brochures', 'Business Cards', 'Posters'],
+  'Marketing Materials': ['Flyers', 'Postcards', 'Brochures', 'Business Cards', 'Posters', 'Direct Mail', 'Enrollment Materials', 'Folders'],
   'Signs & Banners': ['Banners', 'Banner Stands', 'Yard Signs', 'A-Frame Signs'],
   'Apparel & Promo': ['T-Shirts', 'Bags', 'Writing Instruments', 'Drinkware', 'Lanyards'],
-  'Booklets & Guides': ['Enrollment Materials', 'Folders'],
   'Trade Show': ['Table Displays', 'Backdrops', 'Flags'],
+  'Digital Products': ['Presentation Templates', 'Social Media Templates', 'Document Templates', 'Digital Signage'],
   'Custom Requests': ['Custom Design', 'Special Projects', 'Rush Orders', 'Other'],
 };
 
@@ -78,6 +78,12 @@ export default function ManageProducts() {
   });
   const [saving, setSaving] = useState(false);
 
+  // Reorder mode state
+  const [reorderMode, setReorderMode] = useState(false);
+  const [reorderedProducts, setReorderedProducts] = useState([]);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState(null);
+
   // For adding new options
   const [newOptionKey, setNewOptionKey] = useState('');
   const [newOptionLabel, setNewOptionLabel] = useState('');
@@ -89,6 +95,10 @@ export default function ManageProducts() {
 
   // For adding new images
   const [newImageUrl, setNewImageUrl] = useState('');
+
+  // For image uploads
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
 
   useEffect(() => {
     loadProducts();
@@ -252,18 +262,99 @@ export default function ManageProducts() {
   // Images management
   const handleAddImage = () => {
     if (!newImageUrl.trim()) return;
+    // Add URL as an object to maintain consistent format
     setFormData(prev => ({
       ...prev,
-      images: [...prev.images, newImageUrl.trim()]
+      images: [...prev.images, { url: newImageUrl.trim(), uploaded: false }]
     }));
     setNewImageUrl('');
   };
 
-  const handleRemoveImage = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length || !editingProduct) return;
+
+    // Check limit
+    const currentCount = formData.images.length;
+    const maxImages = 8;
+    if (currentCount + files.length > maxImages) {
+      alert(`Maximum ${maxImages} images allowed. You can add ${maxImages - currentCount} more.`);
+      return;
+    }
+
+    setUploadingImages(true);
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        setUploadProgress({ current: i + 1, total: files.length, filename: files[i].name });
+        const response = await adminAPI.uploadProductImage(editingProduct.id, files[i]);
+
+        // Update local state with new image
+        setFormData(prev => ({
+          ...prev,
+          images: [...prev.images, response.data.image]
+        }));
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert(error.response?.data?.error || 'Failed to upload image');
+    } finally {
+      setUploadingImages(false);
+      setUploadProgress(null);
+      // Reset file input
+      e.target.value = '';
+    }
+  };
+
+  const handleMoveImage = async (fromIndex, toIndex) => {
+    if (toIndex < 0 || toIndex >= formData.images.length) return;
+
+    const newImages = [...formData.images];
+    const [movedImage] = newImages.splice(fromIndex, 1);
+    newImages.splice(toIndex, 0, movedImage);
+
+    setFormData(prev => ({ ...prev, images: newImages }));
+
+    // Save to server if editing existing product
+    if (editingProduct) {
+      try {
+        await adminAPI.reorderProductImages(editingProduct.id, newImages);
+      } catch (error) {
+        console.error('Error reordering images:', error);
+      }
+    }
+  };
+
+  const handleDeleteImage = async (index) => {
+    if (!confirm('Delete this image?')) return;
+
+    if (editingProduct) {
+      try {
+        await adminAPI.deleteProductImage(editingProduct.id, index);
+        setFormData(prev => ({
+          ...prev,
+          images: prev.images.filter((_, i) => i !== index)
+        }));
+      } catch (error) {
+        console.error('Error deleting image:', error);
+        alert('Failed to delete image');
+      }
+    } else {
+      // For new products (not yet saved)
+      setFormData(prev => ({
+        ...prev,
+        images: prev.images.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  // Helper to get image URL from either string or object format
+  const getImageUrl = (image) => {
+    return typeof image === 'string' ? image : image?.url || '';
+  };
+
+  const isUploadedImage = (image) => {
+    return typeof image === 'object' && image?.uploaded === true;
   };
 
   const handleSubmit = async (e) => {
@@ -311,6 +402,64 @@ export default function ManageProducts() {
     }
   };
 
+  // Reorder mode functions
+  const enterReorderMode = () => {
+    setReorderedProducts([...products]);
+    setReorderMode(true);
+    setSearchQuery(''); // Clear search when entering reorder mode
+  };
+
+  const cancelReorderMode = () => {
+    setReorderMode(false);
+    setReorderedProducts([]);
+    setDraggedIndex(null);
+  };
+
+  const saveReorder = async () => {
+    setSavingOrder(true);
+    try {
+      const productIds = reorderedProducts.map(p => p.id);
+      await adminAPI.reorderProducts(productIds);
+      setProducts(reorderedProducts);
+      setReorderMode(false);
+      setReorderedProducts([]);
+    } catch (error) {
+      console.error('Failed to save order:', error);
+      alert('Failed to save product order. Please try again.');
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', e.target.outerHTML);
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const newProducts = [...reorderedProducts];
+    const [draggedItem] = newProducts.splice(draggedIndex, 1);
+    newProducts.splice(index, 0, draggedItem);
+    setReorderedProducts(newProducts);
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
+  const moveProduct = (fromIndex, toIndex) => {
+    if (toIndex < 0 || toIndex >= reorderedProducts.length) return;
+    const newProducts = [...reorderedProducts];
+    const [movedProduct] = newProducts.splice(fromIndex, 1);
+    newProducts.splice(toIndex, 0, movedProduct);
+    setReorderedProducts(newProducts);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -341,60 +490,149 @@ export default function ManageProducts() {
             ← Back to Dashboard
           </Link>
           <h1 className="text-3xl font-bold text-charcoal">Manage Products</h1>
-          <p className="text-gray-600 mt-1">{filteredProducts.length} of {products.length} products</p>
+          <p className="text-gray-600 mt-1">
+            {reorderMode
+              ? `Drag to reorder ${reorderedProducts.length} products`
+              : `${filteredProducts.length} of ${products.length} products`
+            }
+          </p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          {/* Search */}
-          <div className="relative flex-1 sm:flex-none">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="input pl-10 w-full sm:w-64"
-            />
-          </div>
-          <button
-            onClick={() => handleOpenModal()}
-            className="btn btn-primary flex items-center gap-2 whitespace-nowrap"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Add Product
-          </button>
+          {reorderMode ? (
+            <>
+              <button
+                onClick={cancelReorderMode}
+                className="btn btn-secondary"
+                disabled={savingOrder}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveReorder}
+                disabled={savingOrder}
+                className="btn btn-primary flex items-center gap-2"
+              >
+                {savingOrder ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Save Order
+                  </>
+                )}
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Search */}
+              <div className="relative flex-1 sm:flex-none">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="input pl-10 w-full sm:w-64"
+                />
+              </div>
+              <button
+                onClick={enterReorderMode}
+                className="btn btn-secondary flex items-center gap-2 whitespace-nowrap"
+                title="Reorder how products appear on the store"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                Reorder
+              </button>
+              <button
+                onClick={() => handleOpenModal()}
+                className="btn btn-primary flex items-center gap-2 whitespace-nowrap"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add Product
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {/* Products Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        {reorderMode && (
+          <div className="bg-blue-50 border-b border-blue-100 px-6 py-3">
+            <p className="text-sm text-blue-700">
+              <strong>Reorder Mode:</strong> Drag products to change their display order on the store, or use the arrow buttons. Click "Save Order" when done.
+            </p>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
+                {reorderMode && (
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                    Order
+                  </th>
+                )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Product
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Category
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Options
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                {!reorderMode && (
+                  <>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Options
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </>
+                )}
+                {reorderMode && (
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                    Move
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredProducts.map((product) => (
-                <tr key={product.id} className="hover:bg-gray-50">
+              {(reorderMode ? reorderedProducts : filteredProducts).map((product, index) => (
+                <tr
+                  key={product.id}
+                  className={`${reorderMode ? 'cursor-move' : 'hover:bg-gray-50'} ${draggedIndex === index ? 'bg-blue-50' : ''}`}
+                  draggable={reorderMode}
+                  onDragStart={(e) => reorderMode && handleDragStart(e, index)}
+                  onDragOver={(e) => reorderMode && handleDragOver(e, index)}
+                  onDragEnd={handleDragEnd}
+                >
+                  {reorderMode && (
+                    <td className="px-3 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                        </svg>
+                        <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
+                      </div>
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     <div>
                       <p className="font-medium text-charcoal">{product.name}</p>
@@ -409,30 +647,60 @@ export default function ManageProducts() {
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-600">
-                      {product.options ? Object.keys(product.options).length : 0} options
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`badge ${product.inStock ? 'badge-success' : 'badge-danger'}`}>
-                      {product.inStock ? 'In Stock' : 'Out of Stock'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <button
-                      onClick={() => handleOpenModal(product)}
-                      className="text-academica-blue hover:text-academica-blue-600 font-medium mr-4"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="text-red-600 hover:text-red-700 font-medium"
-                    >
-                      Delete
-                    </button>
-                  </td>
+                  {!reorderMode && (
+                    <>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-600">
+                          {product.options ? Object.keys(product.options).length : 0} options
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`badge ${product.inStock ? 'badge-success' : 'badge-danger'}`}>
+                          {product.inStock ? 'In Stock' : 'Out of Stock'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <button
+                          onClick={() => handleOpenModal(product)}
+                          className="text-academica-blue hover:text-academica-blue-600 font-medium mr-4"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(product.id)}
+                          className="text-red-600 hover:text-red-700 font-medium"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </>
+                  )}
+                  {reorderMode && (
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => moveProduct(index, index - 1)}
+                          disabled={index === 0}
+                          className={`p-1.5 rounded ${index === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-100 hover:text-academica-blue'}`}
+                          title="Move up"
+                        >
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => moveProduct(index, index + 1)}
+                          disabled={index === reorderedProducts.length - 1}
+                          className={`p-1.5 rounded ${index === reorderedProducts.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-100 hover:text-academica-blue'}`}
+                          title="Move down"
+                        >
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -845,69 +1113,161 @@ export default function ManageProducts() {
                       <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                         <h4 className="font-medium text-purple-900 mb-2">Product Images</h4>
                         <p className="text-sm text-purple-700">
-                          Add multiple image URLs for the product gallery. The primary image is set in Basic Info. These additional images appear as thumbnails.
+                          Upload images or add URLs. The first image is the primary image shown in product listings.
+                          Use arrows to reorder. Maximum 8 images.
                         </p>
                       </div>
 
-                      {/* Current Images */}
+                      {/* File Upload Section - only for existing products */}
+                      {editingProduct ? (
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-academica-blue transition-colors">
+                          <input
+                            type="file"
+                            id="image-upload"
+                            multiple
+                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            onChange={handleImageUpload}
+                            disabled={uploadingImages || formData.images.length >= 8}
+                            className="hidden"
+                          />
+                          <label
+                            htmlFor="image-upload"
+                            className={`cursor-pointer ${uploadingImages || formData.images.length >= 8 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                              <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            <p className="mt-2 text-sm text-gray-600">
+                              {uploadingImages
+                                ? `Uploading ${uploadProgress?.current}/${uploadProgress?.total}: ${uploadProgress?.filename}`
+                                : formData.images.length >= 8
+                                  ? 'Maximum images reached'
+                                  : 'Click to upload images or drag and drop'}
+                            </p>
+                            <p className="text-xs text-gray-500">JPG, PNG, GIF, WebP up to 5MB each</p>
+                          </label>
+                        </div>
+                      ) : (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                          <p className="text-sm text-yellow-800">
+                            Save the product first, then edit it to upload images. You can add image URLs now.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Current Images Grid */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Gallery Images ({formData.images.length})
+                          Images ({formData.images.length}/8)
+                          {formData.images.length > 0 && (
+                            <span className="text-gray-500 font-normal ml-2">
+                              First image is primary
+                            </span>
+                          )}
                         </label>
 
                         {formData.images.length === 0 ? (
-                          <p className="text-gray-500 text-sm italic">No additional images added.</p>
+                          <p className="text-gray-500 text-sm italic">No images added yet.</p>
                         ) : (
-                          <div className="grid grid-cols-3 gap-4">
-                            {formData.images.map((imageUrl, index) => (
-                              <div key={index} className="relative group">
-                                <img
-                                  src={imageUrl}
-                                  alt={`Product image ${index + 1}`}
-                                  className="w-full h-32 object-cover rounded-lg border border-gray-200"
-                                  onError={(e) => {
-                                    e.target.src = 'https://via.placeholder.com/150?text=Invalid+URL';
-                                  }}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveImage(index)}
-                                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
-                                </button>
-                                <p className="text-xs text-gray-500 mt-1 truncate">{imageUrl}</p>
-                              </div>
-                            ))}
+                          <div className="grid grid-cols-4 gap-4">
+                            {formData.images.map((image, index) => {
+                              const imageUrl = getImageUrl(image);
+                              const uploaded = isUploadedImage(image);
+
+                              return (
+                                <div key={index} className="relative group">
+                                  {index === 0 && (
+                                    <span className="absolute -top-2 -left-2 z-10 bg-academica-blue text-white text-xs px-2 py-0.5 rounded">
+                                      Primary
+                                    </span>
+                                  )}
+                                  <img
+                                    src={imageUrl}
+                                    alt={`Product image ${index + 1}`}
+                                    className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                                    onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=Error'; }}
+                                  />
+
+                                  {/* Overlay Controls */}
+                                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all rounded-lg flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                                    {/* Move Left */}
+                                    {index > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleMoveImage(index, index - 1)}
+                                        className="p-1.5 bg-white rounded shadow hover:bg-gray-100"
+                                        title="Move left"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                      </button>
+                                    )}
+                                    {/* Move Right */}
+                                    {index < formData.images.length - 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleMoveImage(index, index + 1)}
+                                        className="p-1.5 bg-white rounded shadow hover:bg-gray-100"
+                                        title="Move right"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                      </button>
+                                    )}
+                                    {/* Delete */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteImage(index)}
+                                      className="p-1.5 bg-red-500 text-white rounded shadow hover:bg-red-600"
+                                      title="Delete image"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  </div>
+
+                                  {/* Badge for uploaded vs URL */}
+                                  <span className={`absolute bottom-1 right-1 text-xs px-1.5 py-0.5 rounded ${uploaded ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                    {uploaded ? 'Uploaded' : 'URL'}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
 
-                      {/* Add Image */}
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={newImageUrl}
-                          onChange={(e) => setNewImageUrl(e.target.value)}
-                          placeholder="Enter image URL (https://...)"
-                          className="input flex-1"
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddImage();
-                            }
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddImage}
-                          disabled={!newImageUrl.trim()}
-                          className="px-4 py-2 bg-academica-blue text-white rounded-md hover:bg-academica-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                        >
-                          Add Image
-                        </button>
+                      {/* Add URL option (always available) */}
+                      <div className="border-t pt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Add Image by URL
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newImageUrl}
+                            onChange={(e) => setNewImageUrl(e.target.value)}
+                            placeholder="https://example.com/image.jpg"
+                            className="input flex-1"
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddImage();
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddImage}
+                            disabled={!newImageUrl.trim() || formData.images.length >= 8}
+                            className="px-4 py-2 bg-academica-blue text-white rounded-md hover:bg-academica-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                          >
+                            Add URL
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}

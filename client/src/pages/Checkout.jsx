@@ -281,7 +281,7 @@ export default function Checkout() {
               {isAdmin && (
                 <div className="space-y-4 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="text-sm font-medium text-blue-800 mb-2">
-                    Placing order on behalf of:
+                    Submitting request on behalf of:
                   </div>
 
                   <div>
@@ -543,7 +543,7 @@ export default function Checkout() {
           {/* Order Summary */}
           <div>
             <div className="bg-white rounded-lg shadow-sm p-6 sticky top-24">
-              <h2 className="text-xl font-semibold text-charcoal mb-6">Order Summary</h2>
+              <h2 className="text-xl font-semibold text-charcoal mb-6">Request Summary</h2>
 
               <div className="space-y-4 mb-6">
                 {items.map((item) => {
@@ -574,7 +574,7 @@ export default function Checkout() {
               </div>
 
               <div className="border-t border-gray-200 pt-4">
-                <p className="text-gray-600">{items.length} item{items.length !== 1 ? 's' : ''} in your order</p>
+                <p className="text-gray-600">{items.length} item{items.length !== 1 ? 's' : ''} in your request</p>
               </div>
 
               <div className="bg-academica-blue-50 rounded-lg p-4 mt-6">
@@ -587,7 +587,7 @@ export default function Checkout() {
                     <p className="text-gray-600 mt-1">
                       {isAcademicaEmployee
                         ? "Our design team will review your request and reach out to discuss your needs."
-                        : "Your order request will be reviewed and you'll receive a quote. Payment will be collected after approval."}
+                        : "Your request will be reviewed and you'll receive a quote. Payment will be collected after approval."}
                     </p>
                   </div>
                 </div>
@@ -608,7 +608,7 @@ export default function Checkout() {
                     Submitting...
                   </span>
                 ) : (
-                  isAcademicaEmployee ? 'Submit Request' : 'Submit Order Request'
+                  isAcademicaEmployee ? 'Submit Request' : 'Submit Request'
                 )}
               </button>
 

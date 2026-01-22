@@ -39,6 +39,7 @@ const uploadsDir = process.env.UPLOADS_PATH || join(__dirname, 'uploads');
 const ensureDir = (dir) => { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); };
 ensureDir(join(uploadsDir, 'proofs'));
 ensureDir(join(uploadsDir, 'attachments'));
+ensureDir(join(uploadsDir, 'products'));
 
 // Export for use in other modules
 export { uploadsDir };

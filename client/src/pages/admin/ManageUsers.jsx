@@ -10,16 +10,18 @@ const statusColors = {
   in_progress: 'bg-indigo-100 text-indigo-800',
   on_hold: 'bg-orange-100 text-orange-800',
   waiting_signoff: 'bg-purple-100 text-purple-800',
+  submitted_to_kimp360: 'bg-pink-100 text-pink-800',
   sent_to_print: 'bg-cyan-100 text-cyan-800',
   completed: 'bg-green-100 text-green-800',
 };
 
 const statusLabels = {
-  new: 'New',
+  new: 'New Request Received',
   waiting_feedback: 'Waiting for Feedback',
   in_progress: 'In Progress',
   on_hold: 'On Hold',
   waiting_signoff: 'Waiting for Sign Off',
+  submitted_to_kimp360: 'Submitted to Kimp360',
   sent_to_print: 'Sent to Print',
   completed: 'Completed',
 };

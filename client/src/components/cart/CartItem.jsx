@@ -6,6 +6,7 @@ export default function CartItem({ item }) {
   const { updateQuantity, updateCartItem, removeFromCart } = useCart();
   const [updating, setUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [product, setProduct] = useState(null);
   const [editedOptions, setEditedOptions] = useState({});
   const [editedCustomText, setEditedCustomText] = useState({});
@@ -57,6 +58,7 @@ export default function CartItem({ item }) {
       await removeFromCart(item.id);
     } finally {
       setUpdating(false);
+      setShowRemoveConfirm(false);
     }
   };
 
@@ -197,7 +199,7 @@ export default function CartItem({ item }) {
         {/* Remove Button */}
         <div className="flex flex-col items-end">
           <button
-            onClick={handleRemove}
+            onClick={() => setShowRemoveConfirm(true)}
             disabled={updating}
             className="text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
           >
@@ -205,6 +207,38 @@ export default function CartItem({ item }) {
           </button>
         </div>
       </div>
+
+      {/* Remove Confirmation Dialog */}
+      {showRemoveConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6">
+            <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+              <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">Remove Item?</h3>
+            <p className="text-gray-600 text-center mb-6">
+              Are you sure you want to remove <span className="font-medium">{item.name}</span> from your cart?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowRemoveConfirm(false)}
+                className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRemove}
+                disabled={updating}
+                className="flex-1 py-2 px-4 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors disabled:opacity-50"
+              >
+                {updating ? 'Removing...' : 'Remove'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Panel */}
       {isEditing && (

@@ -5,11 +5,11 @@ import ProductCard from '../components/products/ProductCard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
 const categoryData = {
-  'Marketing Materials': ['Flyers', 'Postcards', 'Brochures', 'Business Cards', 'Posters'],
+  'Marketing Materials': ['Flyers', 'Postcards', 'Brochures', 'Business Cards', 'Posters', 'Direct Mail', 'Enrollment Materials', 'Folders'],
   'Signs & Banners': ['Banners', 'Banner Stands', 'Yard Signs', 'A-Frame Signs'],
   'Apparel & Promo': ['T-Shirts', 'Bags', 'Writing Instruments', 'Drinkware', 'Lanyards'],
-  'Booklets & Guides': ['Enrollment Materials', 'Folders'],
   'Trade Show': ['Table Displays', 'Backdrops', 'Flags'],
+  'Digital Products': ['Presentation Templates', 'Social Media Templates', 'Document Templates', 'Digital Signage'],
 };
 
 export default function Products() {

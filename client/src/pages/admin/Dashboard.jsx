@@ -4,11 +4,12 @@ import { adminAPI } from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const statusLabels = {
-  new: 'New',
+  new: 'New Request Received',
   waiting_feedback: 'Waiting for Feedback',
   in_progress: 'In Progress',
   on_hold: 'On Hold',
   waiting_signoff: 'Waiting for Sign Off',
+  submitted_to_kimp360: 'Submitted to Kimp360',
   sent_to_print: 'Sent to Print',
   completed: 'Completed',
 };
@@ -19,6 +20,7 @@ const statusBadgeClass = {
   in_progress: 'badge-info',
   on_hold: 'badge-warning',
   waiting_signoff: 'badge-info',
+  submitted_to_kimp360: 'badge-info',
   sent_to_print: 'badge-info',
   completed: 'badge-success',
 };
@@ -93,7 +95,7 @@ export default function AdminDashboard() {
       link: '/admin/products',
     },
     {
-      title: 'Total Orders',
+      title: 'Total Requests',
       value: stats?.totalOrders || 0,
       icon: (
         <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -182,8 +184,8 @@ export default function AdminDashboard() {
             </svg>
           </div>
           <div>
-            <p className="font-semibold text-gray-900">View Orders</p>
-            <p className="text-sm text-gray-500">Process and track orders</p>
+            <p className="font-semibold text-gray-900">View Requests</p>
+            <p className="text-sm text-gray-500">Process and track requests</p>
           </div>
         </Link>
 
@@ -217,7 +219,7 @@ export default function AdminDashboard() {
               </span>
             </h2>
             <Link to="/admin/orders" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-              View All Orders →
+              View All Requests →
             </Link>
           </div>
           <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
@@ -269,10 +271,10 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Recent Orders */}
+      {/* Recent Requests */}
       <div className="bg-white rounded-lg shadow-sm">
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Orders</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Recent Requests</h2>
           <Link to="/admin/orders" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
             View All →
           </Link>
@@ -283,7 +285,7 @@ export default function AdminDashboard() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Order ID
+                    Request ID
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     School
@@ -321,7 +323,7 @@ export default function AdminDashboard() {
             </table>
           ) : (
             <div className="px-6 py-8 text-center text-gray-500">
-              No orders yet
+              No requests yet
             </div>
           )}
         </div>

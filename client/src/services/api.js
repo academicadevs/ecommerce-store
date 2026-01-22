@@ -75,6 +75,19 @@ export const adminAPI = {
   createProduct: (data) => api.post('/admin/products', data),
   updateProduct: (id, data) => api.put(`/admin/products/${id}`, data),
   deleteProduct: (id) => api.delete(`/admin/products/${id}`),
+  // Product Images
+  uploadProductImage: (productId, file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return api.post(`/admin/products/${productId}/images`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  reorderProductImages: (productId, images) =>
+    api.put(`/admin/products/${productId}/images/reorder`, { images }),
+  deleteProductImage: (productId, imageIndex) =>
+    api.delete(`/admin/products/${productId}/images/${imageIndex}`),
+  reorderProducts: (productIds) => api.put('/admin/products/reorder', { productIds }),
   // Orders
   getOrders: (filter) => api.get('/admin/orders', { params: { filter } }),
   updateOrderStatus: (id, status) => api.put(`/admin/orders/${id}`, { status }),

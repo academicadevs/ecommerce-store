@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ordersAPI } from '../services/api';
+import { ordersAPI, adminAPI } from '../services/api';
 
 const projectTypes = [
   { value: 'custom-design', label: 'Custom Design Project', description: 'Need something designed from scratch' },
@@ -32,19 +32,55 @@ const timelineOptions = [
 ];
 
 export default function CustomRequest() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isAdmin, user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const [formData, setFormData] = useState({
-    // School Info
-    schoolName: user?.schoolName || '',
-    contactName: user?.contactName || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
+  // Admin: select user on behalf of
+  const [users, setUsers] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
+  // Load users list for admins
+  useEffect(() => {
+    if (isAdmin) {
+      loadUsers();
+    }
+  }, [isAdmin]);
+
+  const loadUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const response = await adminAPI.getUsers();
+      // Filter to only show non-admin users (school staff)
+      const schoolUsers = response.data.users.filter(u =>
+        u.userType === 'school_staff' || u.userType === 'academica_employee'
+      );
+      setUsers(schoolUsers);
+    } catch (err) {
+      console.error('Failed to load users:', err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const handleUserSelect = (userId) => {
+    setSelectedUserId(userId);
+    if (userId) {
+      const user = users.find(u => u.id === userId);
+      setSelectedUser(user);
+    } else {
+      setSelectedUser(null);
+    }
+  };
+
+  // Get the effective user (selected user for admin, or logged-in user)
+  const effectiveUser = isAdmin && selectedUser ? selectedUser : user;
+
+  const [formData, setFormData] = useState({
     // Project Details
     projectType: '',
     projectTitle: '',
@@ -99,56 +135,48 @@ export default function CustomRequest() {
     setLoading(true);
 
     try {
+      // Build structured request data for display in order items
+      const requestDetails = {
+        requestType: 'custom',
+        projectType: projectTypes.find(p => p.value === formData.projectType)?.label || formData.projectType,
+        projectTitle: formData.projectTitle,
+        timeline: timelineOptions.find(t => t.value === formData.timeline)?.label || formData.timeline,
+        eventDate: formData.eventDate || null,
+        materialTypes: formData.materialTypes,
+        projectDescription: formData.projectDescription,
+        objectives: formData.objectives || null,
+        targetAudience: formData.targetAudience || null,
+        keyMessages: formData.keyMessages || null,
+        specifications: {
+          quantity: formData.quantity || null,
+          sizeRequirements: formData.sizeRequirements || null,
+          colorPreferences: formData.colorPreferences || null,
+          existingBranding: formData.existingBranding || null,
+        },
+        files: {
+          hasExistingFiles: formData.hasExistingFiles,
+          fileDescription: formData.fileDescription || null,
+          referenceLinks: formData.referenceLinks || null,
+          inspirationNotes: formData.inspirationNotes || null,
+        },
+        budgetRange: formData.budgetRange || null,
+        additionalNotes: formData.additionalNotes || null,
+      };
+
       // Create order with custom request data
       await ordersAPI.create({
         shippingInfo: {
-          schoolName: formData.schoolName,
-          contactName: formData.contactName,
-          positionTitle: 'Custom Request',
-          principalName: 'N/A',
-          email: formData.email,
-          phone: formData.phone,
+          schoolName: effectiveUser?.schoolName || '',
+          contactName: effectiveUser?.contactName || '',
+          positionTitle: effectiveUser?.positionTitle || 'Custom Request',
+          principalName: effectiveUser?.principalName || 'N/A',
+          email: effectiveUser?.email || '',
+          phone: effectiveUser?.phone || '',
         },
-        notes: `CUSTOM REQUEST SUBMISSION
-
-PROJECT TYPE: ${projectTypes.find(p => p.value === formData.projectType)?.label || formData.projectType}
-PROJECT TITLE: ${formData.projectTitle}
-TIMELINE: ${timelineOptions.find(t => t.value === formData.timeline)?.label || formData.timeline}
-${formData.eventDate ? `EVENT DATE: ${formData.eventDate}` : ''}
-
-MATERIALS NEEDED:
-${formData.materialTypes.join(', ') || 'Not specified'}
-
-PROJECT DESCRIPTION:
-${formData.projectDescription}
-
-OBJECTIVES:
-${formData.objectives || 'Not specified'}
-
-TARGET AUDIENCE:
-${formData.targetAudience || 'Not specified'}
-
-KEY MESSAGES:
-${formData.keyMessages || 'Not specified'}
-
-SPECIFICATIONS:
-- Quantity: ${formData.quantity || 'To be determined'}
-- Size Requirements: ${formData.sizeRequirements || 'Not specified'}
-- Color Preferences: ${formData.colorPreferences || 'Not specified'}
-- Existing Branding: ${formData.existingBranding || 'Not specified'}
-
-FILES & REFERENCES:
-- Has Existing Files: ${formData.hasExistingFiles ? 'Yes' : 'No'}
-${formData.fileDescription ? `- File Description: ${formData.fileDescription}` : ''}
-${formData.referenceLinks ? `- Reference Links: ${formData.referenceLinks}` : ''}
-${formData.inspirationNotes ? `- Inspiration Notes: ${formData.inspirationNotes}` : ''}
-
-${formData.budgetRange ? `BUDGET RANGE: ${formData.budgetRange}` : ''}
-
-ADDITIONAL NOTES:
-${formData.additionalNotes || 'None'}`,
+        onBehalfOfUserId: isAdmin && selectedUserId ? selectedUserId : undefined,
+        notes: formData.additionalNotes || null,
         isCustomRequest: true,
-        customRequestData: formData,
+        customRequestData: requestDetails,
       });
 
       setSuccess(true);
@@ -197,7 +225,7 @@ ${formData.additionalNotes || 'None'}`,
             Thank you for your custom request. Our Design Department will review your submission
             and reach out to discuss your project details.
           </p>
-          <p className="text-sm text-gray-500">Redirecting to your orders...</p>
+          <p className="text-sm text-gray-500">Redirecting to your requests...</p>
         </div>
       </div>
     );
@@ -222,61 +250,63 @@ ${formData.additionalNotes || 'None'}`,
         )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Contact Information */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-charcoal mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-academica-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              Contact Information
-            </h2>
-            <div className="grid sm:grid-cols-2 gap-4">
+          {/* Admin: Select User */}
+          {isAdmin && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+              <h2 className="text-lg font-semibold text-charcoal mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                Create Request On Behalf Of
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                As an admin, you can create a custom request on behalf of an existing user.
+              </p>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">School Name *</label>
-                <input
-                  type="text"
-                  name="schoolName"
-                  value={formData.schoolName}
-                  onChange={handleChange}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Select User *</label>
+                <select
+                  value={selectedUserId}
+                  onChange={(e) => handleUserSelect(e.target.value)}
                   required
                   className="input"
-                />
+                  disabled={loadingUsers}
+                >
+                  <option value="">
+                    {loadingUsers ? 'Loading users...' : 'Select a user...'}
+                  </option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.contactName} - {u.schoolName} ({u.email})
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Your Name *</label>
-                <input
-                  type="text"
-                  name="contactName"
-                  value={formData.contactName}
-                  onChange={handleChange}
-                  required
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  required
-                  className="input"
-                />
+              {selectedUser && (
+                <div className="mt-4 p-4 bg-white rounded-lg border border-amber-100">
+                  <p className="text-sm font-medium text-charcoal">{selectedUser.contactName}</p>
+                  <p className="text-sm text-gray-600">{selectedUser.schoolName}</p>
+                  <p className="text-sm text-gray-500">{selectedUser.email} {selectedUser.phone && `| ${selectedUser.phone}`}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Show user info for non-admins */}
+          {!isAdmin && (
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+              <h2 className="text-lg font-semibold text-charcoal mb-2 flex items-center gap-2">
+                <svg className="w-5 h-5 text-academica-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                Submitting As
+              </h2>
+              <div className="text-sm">
+                <p className="font-medium text-charcoal">{user?.contactName}</p>
+                <p className="text-gray-600">{user?.schoolName}</p>
+                <p className="text-gray-500">{user?.email}</p>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Project Type */}
           <div className="bg-white rounded-xl shadow-sm p-6">

@@ -7,8 +7,11 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 
 export default function ProductDetail() {
   const { id } = useParams();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { addToCart } = useCart();
+
+  // Check if user is admin or super admin
+  const isAdmin = user?.role === 'admin' || user?.userType === 'admin' || user?.userType === 'superadmin';
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedOptions, setSelectedOptions] = useState({});
@@ -20,7 +23,7 @@ export default function ProductDetail() {
     contactInfo: '',
     additionalNotes: '',
   });
-  const [artworkOption, setArtworkOption] = useState('upload-later');
+  const [artworkOption, setArtworkOption] = useState('use-template');
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -125,6 +128,54 @@ export default function ProductDetail() {
     }));
   };
 
+  // Check if all required fields are filled
+  const isFormValid = () => {
+    if (!product) return false;
+
+    // Admin and super admin users can add to cart without filling required fields
+    if (isAdmin) return true;
+
+    // Check all product options are selected
+    if (product.options) {
+      for (const [key, optionConfig] of Object.entries(product.options)) {
+        const values = getOptionValues(optionConfig);
+        if (values.length > 0 && !selectedOptions[key]) {
+          return false;
+        }
+      }
+    }
+
+    // Check required text fields for products that need text content
+    if (needsTextContent()) {
+      if (!customText.headline?.trim() || !customText.bodyText?.trim()) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // Get list of missing required fields for display
+  const getMissingFields = () => {
+    const missing = [];
+
+    if (product?.options) {
+      for (const [key, optionConfig] of Object.entries(product.options)) {
+        const values = getOptionValues(optionConfig);
+        if (values.length > 0 && !selectedOptions[key]) {
+          missing.push(getOptionLabel(key, optionConfig));
+        }
+      }
+    }
+
+    if (needsTextContent()) {
+      if (!customText.headline?.trim()) missing.push('Headline');
+      if (!customText.bodyText?.trim()) missing.push('Body Text');
+    }
+
+    return missing;
+  };
+
   const handleAddToCart = async () => {
     if (!isAuthenticated) return;
 
@@ -137,7 +188,6 @@ export default function ProductDetail() {
       };
       await addToCart(product.id, 1, fullOptions);
       setAdded(true);
-      setTimeout(() => setAdded(false), 3000);
     } catch (error) {
       console.error('Failed to add to cart:', error);
     } finally {
@@ -350,25 +400,27 @@ export default function ProductDetail() {
               <div className="space-y-4">
                 <h2 className="font-semibold text-lg text-charcoal mb-2">Enter Your Content</h2>
                 <p className="text-sm text-gray-500 mb-4">
-                  Provide the text you want printed on your {product.name.toLowerCase()}. Our design team will create your proof.
+                  Provide the text you want printed on your {product.name.toLowerCase()}. Our design team will create your proof. <strong className="text-gray-700">The more information you provide, the quicker your project will move forward.</strong>
                 </p>
 
                 <div>
                   <label className="block text-sm font-medium text-charcoal mb-1">
-                    Headline / Title
+                    Headline / Title <span className="text-green-600">*</span>
                   </label>
                   <input
                     type="text"
                     value={customText.headline}
                     onChange={(e) => handleTextChange('headline', e.target.value)}
                     placeholder="e.g., Join Our School Today!"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-academica-blue focus:border-transparent text-sm"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-academica-blue focus:border-transparent text-sm ${
+                      !customText.headline?.trim() ? 'border-green-300 bg-green-50' : 'border-gray-300'
+                    }`}
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-charcoal mb-1">
-                    Subheadline (Optional)
+                    Subheadline <span className="text-gray-400 font-normal">(Optional)</span>
                   </label>
                   <input
                     type="text"
@@ -381,20 +433,22 @@ export default function ProductDetail() {
 
                 <div>
                   <label className="block text-sm font-medium text-charcoal mb-1">
-                    Body Text / Description
+                    Body Text / Description <span className="text-green-600">*</span>
                   </label>
                   <textarea
                     value={customText.bodyText}
                     onChange={(e) => handleTextChange('bodyText', e.target.value)}
                     placeholder="Enter the main message or description..."
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-academica-blue focus:border-transparent text-sm"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-academica-blue focus:border-transparent text-sm ${
+                      !customText.bodyText?.trim() ? 'border-green-300 bg-green-50' : 'border-gray-300'
+                    }`}
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-charcoal mb-1">
-                    Call to Action
+                    Call to Action <span className="text-gray-400 font-normal">(Optional)</span>
                   </label>
                   <input
                     type="text"
@@ -407,7 +461,7 @@ export default function ProductDetail() {
 
                 <div>
                   <label className="block text-sm font-medium text-charcoal mb-1">
-                    Contact Information
+                    Contact Information <span className="text-gray-400 font-normal">(Optional)</span>
                   </label>
                   <textarea
                     value={customText.contactInfo}
@@ -420,7 +474,7 @@ export default function ProductDetail() {
 
                 <div>
                   <label className="block text-sm font-medium text-charcoal mb-1">
-                    Additional Notes for Designer
+                    Additional Notes for Designer <span className="text-gray-400 font-normal">(Optional)</span>
                   </label>
                   <textarea
                     value={customText.additionalNotes}
@@ -450,19 +504,19 @@ export default function ProductDetail() {
 
                 <div className="space-y-3">
                   <label className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${
-                    artworkOption === 'upload-later' ? 'border-academica-blue bg-academica-blue-50' : 'border-gray-200 hover:border-gray-300'
+                    artworkOption === 'use-template' ? 'border-academica-blue bg-academica-blue-50' : 'border-gray-200 hover:border-gray-300'
                   }`}>
                     <input
                       type="radio"
                       name="artwork"
-                      value="upload-later"
-                      checked={artworkOption === 'upload-later'}
+                      value="use-template"
+                      checked={artworkOption === 'use-template'}
                       onChange={(e) => setArtworkOption(e.target.value)}
                       className="mt-1"
                     />
                     <div>
-                      <div className="font-medium text-charcoal">Upload Files Later</div>
-                      <div className="text-sm text-gray-500">We'll send you instructions to upload your logo and images after ordering</div>
+                      <div className="font-medium text-charcoal">Use Academica Template</div>
+                      <div className="text-sm text-gray-500">We'll use your school's approved brand template</div>
                     </div>
                   </label>
 
@@ -484,23 +538,6 @@ export default function ProductDetail() {
                   </label>
 
                   <label className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${
-                    artworkOption === 'use-template' ? 'border-academica-blue bg-academica-blue-50' : 'border-gray-200 hover:border-gray-300'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="artwork"
-                      value="use-template"
-                      checked={artworkOption === 'use-template'}
-                      onChange={(e) => setArtworkOption(e.target.value)}
-                      className="mt-1"
-                    />
-                    <div>
-                      <div className="font-medium text-charcoal">Use Academica Template</div>
-                      <div className="text-sm text-gray-500">We'll use your school's approved brand template</div>
-                    </div>
-                  </label>
-
-                  <label className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${
                     artworkOption === 'print-ready' ? 'border-academica-blue bg-academica-blue-50' : 'border-gray-200 hover:border-gray-300'
                   }`}>
                     <input
@@ -514,6 +551,23 @@ export default function ProductDetail() {
                     <div>
                       <div className="font-medium text-charcoal">I Have Print-Ready Files</div>
                       <div className="text-sm text-gray-500">Upload your own print-ready PDF, AI, or PSD files</div>
+                    </div>
+                  </label>
+
+                  <label className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${
+                    artworkOption === 'upload-later' ? 'border-academica-blue bg-academica-blue-50' : 'border-gray-200 hover:border-gray-300'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="artwork"
+                      value="upload-later"
+                      checked={artworkOption === 'upload-later'}
+                      onChange={(e) => setArtworkOption(e.target.value)}
+                      className="mt-1"
+                    />
+                    <div>
+                      <div className="font-medium text-charcoal">Upload Files Later</div>
+                      <div className="text-sm text-gray-500">We'll send you instructions to upload your logo and images after ordering</div>
                     </div>
                   </label>
                 </div>
@@ -560,38 +614,64 @@ export default function ProductDetail() {
 
               {/* Add to Cart */}
               {isAuthenticated ? (
-                <button
-                  onClick={handleAddToCart}
-                  disabled={adding || !product.inStock}
-                  className={`w-full py-4 px-6 rounded-lg font-semibold text-lg transition-all ${
-                    !product.inStock
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : added
-                      ? 'bg-cta-green text-white'
-                      : 'bg-cta-green text-white hover:bg-cta-green-hover'
-                  }`}
-                >
-                  {adding ? (
-                    <span className="flex items-center justify-center">
-                      <svg className="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Adding...
-                    </span>
-                  ) : added ? (
-                    <span className="flex items-center justify-center">
+                added ? (
+                  <div className="space-y-3">
+                    <Link
+                      to="/cart"
+                      className="flex items-center justify-center w-full py-4 px-6 rounded-lg font-semibold text-lg bg-cta-green text-white hover:bg-cta-green-hover transition-all"
+                    >
                       <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                       </svg>
-                      Added to Cart!
-                    </span>
-                  ) : !product.inStock ? (
-                    'Out of Stock'
-                  ) : (
-                    'Add to Cart'
-                  )}
-                </button>
+                      Visit Cart
+                    </Link>
+                    <Link
+                      to="/products"
+                      className="flex items-center justify-center w-full py-3 px-6 rounded-lg font-medium border border-gray-300 text-charcoal hover:bg-gray-50 transition-all"
+                    >
+                      Keep Shopping
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleAddToCart}
+                      disabled={adding || !product.inStock || !isFormValid()}
+                      className={`w-full py-4 px-6 rounded-lg font-semibold text-lg transition-all ${
+                        !product.inStock || !isFormValid()
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-cta-green text-white hover:bg-cta-green-hover'
+                      }`}
+                    >
+                      {adding ? (
+                        <span className="flex items-center justify-center">
+                          <svg className="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Adding...
+                        </span>
+                      ) : !product.inStock ? (
+                        'Out of Stock'
+                      ) : (
+                        'Add to Cart'
+                      )}
+                    </button>
+                    {!isFormValid() && getMissingFields().length > 0 && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+                        <div className="flex items-start gap-2">
+                          <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          <div>
+                            <span className="font-medium text-amber-800">Required fields missing:</span>
+                            <span className="text-amber-700"> {getMissingFields().join(', ')}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
               ) : (
                 <div className="space-y-3">
                   <Link
@@ -611,6 +691,189 @@ export default function ProductDetail() {
             </div>
           </div>
         </div>
+
+        {/* Overview Section */}
+        {product.overview && (
+          <div className="mt-8">
+            {/* Tab Navigation */}
+            <div className="border-b border-gray-200 bg-white">
+              <div className="flex justify-center">
+                <button className="px-8 py-4 text-lg font-medium text-charcoal border-b-2 border-academica-blue">
+                  Overview
+                </button>
+              </div>
+            </div>
+
+            {/* Overview Content */}
+            <div className="bg-white py-12 px-6">
+              <div className="max-w-5xl mx-auto">
+                {/* Headline */}
+                <h2 className="text-3xl font-display font-bold text-charcoal text-center mb-10">
+                  {product.overview.headline}
+                </h2>
+
+                {/* Quote and Content Grid */}
+                <div className="grid md:grid-cols-2 gap-8 mb-12">
+                  {/* Quote Block */}
+                  <div className="bg-gray-50 p-8 rounded-lg">
+                    <div className="relative">
+                      <span className="absolute -top-4 -left-2 text-6xl text-cta-green font-serif">"</span>
+                      <p className="text-xl italic text-gray-700 leading-relaxed pl-6">
+                        {product.overview.quote}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex items-center">
+                    <p className="text-gray-600 leading-relaxed">
+                      {product.overview.content}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Dynamic Sections */}
+                {product.overview.sections && product.overview.sections.map((section, idx) => (
+                  <div key={idx} className="mt-16 pt-8 border-t border-gray-100 first:border-t-0 first:pt-0">
+
+                    {/* Intro Section Type */}
+                    {section.type === 'intro' && (
+                      <div className="text-center mb-8">
+                        <h3 className="text-2xl font-display font-bold text-charcoal mb-4">
+                          {section.title}
+                        </h3>
+                        <p className="text-gray-600 max-w-3xl mx-auto">
+                          {section.intro}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Comparison Grid Section Type */}
+                    {section.type === 'comparison-grid' && (
+                      <div>
+                        <h3 className="text-2xl font-display font-bold text-charcoal text-center mb-8">
+                          {section.title}
+                        </h3>
+                        <div className={`grid gap-6 ${
+                          section.columns.length === 2 ? 'md:grid-cols-2' :
+                          section.columns.length === 3 ? 'md:grid-cols-3' :
+                          'md:grid-cols-2 lg:grid-cols-4'
+                        }`}>
+                          {section.columns.map((column, colIdx) => (
+                            <div key={colIdx} className="bg-gray-50 rounded-lg overflow-hidden">
+                              <div className="bg-gray-100 px-6 py-4 border-b border-gray-200">
+                                <h4 className="font-semibold text-charcoal text-center">
+                                  {column.name}
+                                </h4>
+                              </div>
+                              <div className="p-6">
+                                <ul className="space-y-3">
+                                  {column.bullets.map((bullet, bulletIdx) => (
+                                    <li key={bulletIdx} className="flex items-start gap-2 text-sm text-gray-600">
+                                      <svg className="w-4 h-4 text-cta-green flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                      <span>{bullet}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tips Section Type */}
+                    {section.type === 'tips' && (
+                      <div>
+                        <h3 className="text-2xl font-display font-bold text-charcoal text-center mb-8">
+                          {section.title}
+                        </h3>
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                          <ul className="space-y-4">
+                            {section.items.map((item, itemIdx) => (
+                              <li key={itemIdx} className="flex items-start gap-3">
+                                <svg className="w-5 h-5 text-cta-green flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-gray-700">{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Coating Options Section Type */}
+                    {section.type === 'coating-options' && (
+                      <div>
+                        <h3 className="text-2xl font-display font-bold text-charcoal text-center mb-4">
+                          {section.title}
+                        </h3>
+                        {section.intro && (
+                          <p className="text-gray-600 text-center mb-8 max-w-3xl mx-auto">
+                            {section.intro}
+                          </p>
+                        )}
+                        <div className={`grid gap-6 ${
+                          section.options.length === 3 ? 'md:grid-cols-3' :
+                          'md:grid-cols-2 lg:grid-cols-4'
+                        }`}>
+                          {section.options.map((option, optIdx) => (
+                            <div key={optIdx} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                                <h4 className="font-semibold text-charcoal text-center">
+                                  {option.name}
+                                </h4>
+                              </div>
+                              <div className="p-6">
+                                <p className="text-sm text-gray-600 mb-4 text-center italic">
+                                  {option.description}
+                                </p>
+                                <ul className="space-y-2">
+                                  {option.bullets.map((bullet, bulletIdx) => (
+                                    <li key={bulletIdx} className="flex items-start gap-2 text-sm text-gray-600">
+                                      <span className="text-cta-green">•</span>
+                                      <span>{bullet}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* FAQ Section Type */}
+                    {section.type === 'faq' && (
+                      <div>
+                        <h3 className="text-2xl font-display font-bold text-charcoal text-center mb-8">
+                          {section.title}
+                        </h3>
+                        <div className="space-y-6 max-w-3xl mx-auto">
+                          {section.questions.map((qa, qaIdx) => (
+                            <div key={qaIdx} className="border-b border-gray-200 pb-6 last:border-b-0">
+                              <h4 className="font-semibold text-charcoal mb-2 flex items-start gap-2">
+                                <span className="text-academica-blue font-bold">Q:</span>
+                                {qa.q}
+                              </h4>
+                              <p className="text-gray-600 pl-6">
+                                {qa.a}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
