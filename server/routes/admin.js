@@ -238,7 +238,7 @@ router.post('/products', (req, res) => {
 
 router.put('/products/:id', (req, res) => {
   try {
-    const { name, description, category, subcategory, imageUrl, images, options, features, inStock } = req.body;
+    const { name, description, priceMin, priceMax, category, subcategory, imageUrl, images, options, features, inStock } = req.body;
 
     const existing = Product.findById(req.params.id);
     if (!existing) {
@@ -248,6 +248,8 @@ router.put('/products/:id', (req, res) => {
     const product = Product.update(req.params.id, {
       name: name || existing.name,
       description: description !== undefined ? description : existing.description,
+      priceMin: priceMin !== undefined ? priceMin : existing.priceMin,
+      priceMax: priceMax !== undefined ? priceMax : existing.priceMax,
       category: category || existing.category,
       subcategory: subcategory !== undefined ? subcategory : existing.subcategory,
       imageUrl: imageUrl !== undefined ? imageUrl : existing.imageUrl,
