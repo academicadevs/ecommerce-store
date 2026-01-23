@@ -206,6 +206,12 @@ export default function ProductDetail() {
     return images[category] || 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&h=600&fit=crop';
   };
 
+  // Helper to get image URL from either string or object format
+  const getImageUrl = (image) => {
+    if (!image) return '';
+    return typeof image === 'string' ? image : image?.url || '';
+  };
+
   // Check if product needs text content (print materials)
   const needsTextContent = () => {
     if (!product) return false;
@@ -270,7 +276,7 @@ export default function ProductDetail() {
             <div className="sticky top-24">
               <div className="aspect-square bg-gray-50 rounded-lg overflow-hidden mb-4">
                 <img
-                  src={productImages[selectedImage]}
+                  src={getImageUrl(productImages[selectedImage])}
                   alt={product.name}
                   className="w-full h-full object-contain"
                 />
@@ -286,7 +292,7 @@ export default function ProductDetail() {
                         selectedImage === idx ? 'border-academica-blue' : 'border-gray-200'
                       }`}
                     >
-                      <img src={img} alt="" className="w-full h-full object-cover" />
+                      <img src={getImageUrl(img)} alt="" className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
