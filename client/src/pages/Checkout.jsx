@@ -227,9 +227,11 @@ export default function Checkout() {
       });
 
       await clearCart();
+      setLoading(false);
       navigate(`/order-confirmation/${response.data.order.id}`);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to place order. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
