@@ -127,6 +127,34 @@ export const adminAPI = {
   }),
   deleteProof: (proofId) => api.delete(`/proofs/${proofId}`),
   resolveAnnotation: (annotationId) => api.post(`/proofs/annotations/${annotationId}/resolve`),
+  // Schools
+  getSchools: () => api.get('/admin/schools'),
+  getSchool: (id) => api.get(`/admin/schools/${id}`),
+  createSchool: (data) => api.post('/admin/schools', data),
+  updateSchool: (id, data) => api.put(`/admin/schools/${id}`, data),
+  toggleSchoolActive: (id) => api.put(`/admin/schools/${id}/toggle-active`),
+  deleteSchool: (id) => api.delete(`/admin/schools/${id}`),
+  getSchoolUsers: (id) => api.get(`/admin/schools/${id}/users`),
+  // Offices
+  getOffices: () => api.get('/admin/offices'),
+  getOffice: (id) => api.get(`/admin/offices/${id}`),
+  createOffice: (data) => api.post('/admin/offices', data),
+  updateOffice: (id, data) => api.put(`/admin/offices/${id}`, data),
+  toggleOfficeActive: (id) => api.put(`/admin/offices/${id}/toggle-active`),
+  deleteOffice: (id) => api.delete(`/admin/offices/${id}`),
+  getOfficeUsers: (id) => api.get(`/admin/offices/${id}/users`),
+};
+
+// Schools API (public endpoint for active schools)
+export const schoolsAPI = {
+  getActive: () => api.get('/schools'),
+  getById: (id) => api.get(`/schools/${id}`),
+};
+
+// Offices API (public endpoint for active offices)
+export const officesAPI = {
+  getActive: () => api.get('/offices'),
+  getById: (id) => api.get(`/offices/${id}`),
 };
 
 // Public Proofs API (no auth required)
@@ -135,6 +163,29 @@ export const proofsAPI = {
   addAnnotation: (accessToken, data) => api.post(`/proofs/review/${accessToken}/annotate`, data),
   deleteAnnotation: (accessToken, annotationId) => api.delete(`/proofs/review/${accessToken}/annotations/${annotationId}`),
   signOff: (accessToken, data) => api.post(`/proofs/review/${accessToken}/signoff`, data),
+};
+
+// Reports API
+export const reportsAPI = {
+  // Dashboard
+  getDashboard: (dateRange) => api.get('/admin/reports/dashboard', { params: dateRange }),
+  // Orders
+  getOrderVolume: (dateRange, groupBy) => api.get('/admin/reports/orders/volume', { params: { ...dateRange, groupBy } }),
+  getOrderStatusDistribution: (dateRange) => api.get('/admin/reports/orders/status-distribution', { params: dateRange }),
+  getOrdersByAdmin: (dateRange) => api.get('/admin/reports/orders/by-admin', { params: dateRange }),
+  getOrdersHeatmap: (dateRange) => api.get('/admin/reports/orders/heatmap', { params: dateRange }),
+  // Products
+  getTopProducts: (dateRange, limit) => api.get('/admin/reports/products/top-selling', { params: { ...dateRange, limit } }),
+  getProductsByCategory: (dateRange) => api.get('/admin/reports/products/by-category', { params: dateRange }),
+  // Users
+  getUsersOverview: (dateRange) => api.get('/admin/reports/users/overview', { params: dateRange }),
+  getTopSchools: (dateRange, limit) => api.get('/admin/reports/schools/top', { params: { ...dateRange, limit } }),
+  // Communications
+  getCommunicationsOverview: (dateRange) => api.get('/admin/reports/communications/overview', { params: dateRange }),
+  // Staff
+  getStaffPerformance: (dateRange) => api.get('/admin/reports/staff/performance', { params: dateRange }),
+  // Export
+  exportData: (type, data) => api.post(`/admin/reports/export/${type}`, data, { responseType: 'blob' }),
 };
 
 export default api;

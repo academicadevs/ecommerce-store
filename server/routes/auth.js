@@ -8,7 +8,7 @@ const router = express.Router();
 // Register a new user
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, userType, contactName, middleName, positionTitle, department, schoolName, principalName, phone, address } = req.body;
+    const { email, password, userType, contactName, middleName, positionTitle, department, schoolName, principalName, phone, address, school_id, supervisor, office_id } = req.body;
 
     // Staff users use middle name as password
     const isStaffUser = userType === 'school_staff' || userType === 'academica_employee';
@@ -31,9 +31,21 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // Validate based on user type
-    if (userType === 'school_staff' && !schoolName) {
-      return res.status(400).json({ error: 'School name is required for school staff' });
+    // Validate based on user type - school_id is required for school staff
+    if (userType === 'school_staff') {
+      if (!school_id) {
+        return res.status(400).json({ error: 'School selection is required for school staff' });
+      }
+      if (!supervisor || !supervisor.trim()) {
+        return res.status(400).json({ error: 'Supervisor name is required for school staff' });
+      }
+    }
+
+    // Validate based on user type - office_id is required for academica employees
+    if (userType === 'academica_employee') {
+      if (!office_id) {
+        return res.status(400).json({ error: 'Office selection is required for Academica employees' });
+      }
     }
 
     // Check if user exists
@@ -54,7 +66,10 @@ router.post('/register', async (req, res) => {
       schoolName,
       principalName,
       phone,
-      address
+      address,
+      school_id,
+      supervisor,
+      office_id
     });
 
     // Generate token
@@ -79,6 +94,9 @@ router.post('/register', async (req, res) => {
         principalName: user.principalName,
         phone: user.phone,
         address: user.address,
+        school_id: user.school_id,
+        supervisor: user.supervisor,
+        office_id: user.office_id,
         role: user.role
       }
     });
@@ -130,6 +148,9 @@ router.post('/login', async (req, res) => {
         principalName: user.principalName,
         phone: user.phone,
         address: user.address,
+        school_id: user.school_id,
+        supervisor: user.supervisor,
+        office_id: user.office_id,
         role: user.role
       }
     });

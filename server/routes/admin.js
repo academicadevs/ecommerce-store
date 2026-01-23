@@ -10,6 +10,8 @@ import { Order } from '../models/Order.js';
 import { OrderCommunication } from '../models/OrderCommunication.js';
 import { Proof, ProofAnnotation } from '../models/Proof.js';
 import { User } from '../models/User.js';
+import { School } from '../models/School.js';
+import { Office } from '../models/Office.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 import { seedAll } from '../scripts/seedAll.js';
 import { sendOrderEmail } from '../utils/sendgrid.js';
@@ -728,7 +730,7 @@ router.put('/users/:id/userType', (req, res) => {
 // Create a new user (admin only)
 router.post('/users', async (req, res) => {
   try {
-    const { email, password, userType, contactName, middleName, positionTitle, department, schoolName, principalName, phone } = req.body;
+    const { email, password, userType, contactName, middleName, positionTitle, department, schoolName, principalName, phone, school_id, supervisor, office_id } = req.body;
 
     const validUserTypes = ['school_staff', 'academica_employee', 'admin', 'superadmin'];
     const finalUserType = validUserTypes.includes(userType) ? userType : 'school_staff';
@@ -771,7 +773,10 @@ router.post('/users', async (req, res) => {
       department,
       schoolName,
       principalName,
-      phone
+      phone,
+      school_id,
+      supervisor,
+      office_id
     });
 
     // Set role based on userType
@@ -799,7 +804,7 @@ router.put('/users/:id', async (req, res) => {
       return res.status(403).json({ error: 'You do not have permission to edit super admin profiles' });
     }
 
-    const { contactName, middleName, positionTitle, department, schoolName, principalName, phone, email } = req.body;
+    const { contactName, middleName, positionTitle, department, schoolName, principalName, phone, email, school_id, supervisor, office_id } = req.body;
 
     // Check if email is being changed and if it's already taken
     if (email && email !== targetUser.email) {
@@ -826,7 +831,10 @@ router.put('/users/:id', async (req, res) => {
       schoolName,
       principalName,
       phone,
-      email
+      email,
+      school_id,
+      supervisor,
+      office_id
     });
 
     res.json({ message: 'User profile updated', user: updatedUser });
@@ -881,6 +889,310 @@ router.get('/users/:id/orders', (req, res) => {
   } catch (error) {
     console.error('Error fetching user orders:', error);
     res.status(500).json({ error: 'Failed to fetch user orders' });
+  }
+});
+
+// School management
+
+// Get all schools with user counts
+router.get('/schools', (req, res) => {
+  try {
+    const schools = School.getAllWithUserCounts();
+    res.json({ schools });
+  } catch (error) {
+    console.error('Error fetching schools:', error);
+    res.status(500).json({ error: 'Failed to fetch schools' });
+  }
+});
+
+// Get a single school
+router.get('/schools/:id', (req, res) => {
+  try {
+    const school = School.findById(req.params.id);
+    if (!school) {
+      return res.status(404).json({ error: 'School not found' });
+    }
+    res.json({ school });
+  } catch (error) {
+    console.error('Error fetching school:', error);
+    res.status(500).json({ error: 'Failed to fetch school' });
+  }
+});
+
+// Create a new school
+router.post('/schools', (req, res) => {
+  try {
+    const { name, principal_name, address, city, state, zip, phone, email, district, is_active } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'School name is required' });
+    }
+
+    // Check if school name already exists
+    const existing = School.findByName(name.trim());
+    if (existing) {
+      return res.status(400).json({ error: 'A school with this name already exists' });
+    }
+
+    const school = School.create({
+      name: name.trim(),
+      principal_name,
+      address,
+      city,
+      state,
+      zip,
+      phone,
+      email,
+      district,
+      is_active: is_active !== false
+    });
+
+    res.status(201).json({ message: 'School created', school });
+  } catch (error) {
+    console.error('Error creating school:', error);
+    res.status(500).json({ error: 'Failed to create school' });
+  }
+});
+
+// Update a school
+router.put('/schools/:id', (req, res) => {
+  try {
+    const existing = School.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: 'School not found' });
+    }
+
+    const { name, principal_name, address, city, state, zip, phone, email, district, is_active } = req.body;
+
+    // If name is being changed, check for duplicates
+    if (name && name.trim() !== existing.name) {
+      const duplicate = School.findByName(name.trim());
+      if (duplicate && duplicate.id !== req.params.id) {
+        return res.status(400).json({ error: 'A school with this name already exists' });
+      }
+    }
+
+    const school = School.update(req.params.id, {
+      name: name ? name.trim() : undefined,
+      principal_name,
+      address,
+      city,
+      state,
+      zip,
+      phone,
+      email,
+      district,
+      is_active
+    });
+
+    res.json({ message: 'School updated', school });
+  } catch (error) {
+    console.error('Error updating school:', error);
+    res.status(500).json({ error: 'Failed to update school' });
+  }
+});
+
+// Toggle school active status
+router.put('/schools/:id/toggle-active', (req, res) => {
+  try {
+    const school = School.toggleActive(req.params.id);
+    if (!school) {
+      return res.status(404).json({ error: 'School not found' });
+    }
+    res.json({ message: `School ${school.is_active ? 'activated' : 'deactivated'}`, school });
+  } catch (error) {
+    console.error('Error toggling school status:', error);
+    res.status(500).json({ error: 'Failed to toggle school status' });
+  }
+});
+
+// Delete a school (only if no users assigned)
+router.delete('/schools/:id', (req, res) => {
+  try {
+    const school = School.findById(req.params.id);
+    if (!school) {
+      return res.status(404).json({ error: 'School not found' });
+    }
+
+    // Check if any users are assigned to this school
+    const users = School.getSchoolUsers(req.params.id);
+    if (users.length > 0) {
+      return res.status(400).json({
+        error: `Cannot delete school with ${users.length} assigned user(s). Please reassign or remove users first.`
+      });
+    }
+
+    School.delete(req.params.id);
+    res.json({ message: 'School deleted' });
+  } catch (error) {
+    console.error('Error deleting school:', error);
+    res.status(500).json({ error: 'Failed to delete school' });
+  }
+});
+
+// Get users assigned to a school
+router.get('/schools/:id/users', (req, res) => {
+  try {
+    const school = School.findById(req.params.id);
+    if (!school) {
+      return res.status(404).json({ error: 'School not found' });
+    }
+
+    const users = School.getSchoolUsers(req.params.id);
+    res.json({ users, school });
+  } catch (error) {
+    console.error('Error fetching school users:', error);
+    res.status(500).json({ error: 'Failed to fetch school users' });
+  }
+});
+
+// Office management
+
+// Get all offices with user counts
+router.get('/offices', (req, res) => {
+  try {
+    const offices = Office.getAllWithUserCounts();
+    res.json({ offices });
+  } catch (error) {
+    console.error('Error fetching offices:', error);
+    res.status(500).json({ error: 'Failed to fetch offices' });
+  }
+});
+
+// Get a single office
+router.get('/offices/:id', (req, res) => {
+  try {
+    const office = Office.findById(req.params.id);
+    if (!office) {
+      return res.status(404).json({ error: 'Office not found' });
+    }
+    res.json({ office });
+  } catch (error) {
+    console.error('Error fetching office:', error);
+    res.status(500).json({ error: 'Failed to fetch office' });
+  }
+});
+
+// Create a new office
+router.post('/offices', (req, res) => {
+  try {
+    const { name, address, city, state, zip, phone, email, is_active } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Office name is required' });
+    }
+
+    // Check if office name already exists
+    const existing = Office.findByName(name.trim());
+    if (existing) {
+      return res.status(400).json({ error: 'An office with this name already exists' });
+    }
+
+    const office = Office.create({
+      name: name.trim(),
+      address,
+      city,
+      state,
+      zip,
+      phone,
+      email,
+      is_active: is_active !== false
+    });
+
+    res.status(201).json({ message: 'Office created', office });
+  } catch (error) {
+    console.error('Error creating office:', error);
+    res.status(500).json({ error: 'Failed to create office' });
+  }
+});
+
+// Update an office
+router.put('/offices/:id', (req, res) => {
+  try {
+    const existing = Office.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Office not found' });
+    }
+
+    const { name, address, city, state, zip, phone, email, is_active } = req.body;
+
+    // If name is being changed, check for duplicates
+    if (name && name.trim() !== existing.name) {
+      const duplicate = Office.findByName(name.trim());
+      if (duplicate && duplicate.id !== req.params.id) {
+        return res.status(400).json({ error: 'An office with this name already exists' });
+      }
+    }
+
+    const office = Office.update(req.params.id, {
+      name: name ? name.trim() : undefined,
+      address,
+      city,
+      state,
+      zip,
+      phone,
+      email,
+      is_active
+    });
+
+    res.json({ message: 'Office updated', office });
+  } catch (error) {
+    console.error('Error updating office:', error);
+    res.status(500).json({ error: 'Failed to update office' });
+  }
+});
+
+// Toggle office active status
+router.put('/offices/:id/toggle-active', (req, res) => {
+  try {
+    const office = Office.toggleActive(req.params.id);
+    if (!office) {
+      return res.status(404).json({ error: 'Office not found' });
+    }
+    res.json({ message: `Office ${office.is_active ? 'activated' : 'deactivated'}`, office });
+  } catch (error) {
+    console.error('Error toggling office status:', error);
+    res.status(500).json({ error: 'Failed to toggle office status' });
+  }
+});
+
+// Delete an office (only if no users assigned)
+router.delete('/offices/:id', (req, res) => {
+  try {
+    const office = Office.findById(req.params.id);
+    if (!office) {
+      return res.status(404).json({ error: 'Office not found' });
+    }
+
+    // Check if any users are assigned to this office
+    const users = Office.getOfficeUsers(req.params.id);
+    if (users.length > 0) {
+      return res.status(400).json({
+        error: `Cannot delete office with ${users.length} assigned user(s). Please reassign or remove users first.`
+      });
+    }
+
+    Office.delete(req.params.id);
+    res.json({ message: 'Office deleted' });
+  } catch (error) {
+    console.error('Error deleting office:', error);
+    res.status(500).json({ error: 'Failed to delete office' });
+  }
+});
+
+// Get users assigned to an office
+router.get('/offices/:id/users', (req, res) => {
+  try {
+    const office = Office.findById(req.params.id);
+    if (!office) {
+      return res.status(404).json({ error: 'Office not found' });
+    }
+
+    const users = Office.getOfficeUsers(req.params.id);
+    res.json({ users, office });
+  } catch (error) {
+    console.error('Error fetching office users:', error);
+    res.status(500).json({ error: 'Failed to fetch office users' });
   }
 });
 

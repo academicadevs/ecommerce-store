@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import SchoolsTab from '../../components/admin/SchoolsTab';
+import OfficesTab from '../../components/admin/OfficesTab';
+import SchoolDropdown from '../../components/SchoolDropdown';
+import OfficeDropdown from '../../components/OfficeDropdown';
 
 const statusColors = {
   new: 'bg-blue-100 text-blue-800',
@@ -42,6 +46,7 @@ const USER_TYPE_COLORS = {
 
 export default function ManageUsers() {
   const { user: currentUser } = useAuth();
+  const [activeTab, setActiveTab] = useState('users'); // 'users', 'schools', or 'offices'
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingRole, setUpdatingRole] = useState(null);
@@ -61,10 +66,13 @@ export default function ManageUsers() {
     middleName: '',
     contactName: '',
     userType: 'school_staff',
+    school_id: '',
     schoolName: '',
     principalName: '',
+    supervisor: '',
     positionTitle: '',
     department: '',
+    office_id: '',
     phone: '',
   });
 
@@ -160,10 +168,13 @@ export default function ManageUsers() {
       middleName: '',
       contactName: '',
       userType: 'school_staff',
+      school_id: '',
       schoolName: '',
       principalName: '',
+      supervisor: '',
       positionTitle: '',
       department: '',
+      office_id: '',
       phone: '',
     });
     setAddError('');
@@ -205,10 +216,13 @@ export default function ManageUsers() {
       contactName: user.contactName,
       userType: user.userType,
       middleName: user.middleName || '',
+      school_id: user.school_id || '',
       schoolName: user.schoolName || '',
       principalName: user.principalName || '',
+      supervisor: user.supervisor || '',
       positionTitle: user.positionTitle || '',
       department: user.department || '',
+      office_id: user.office_id || '',
       phone: user.phone || '',
     });
     setEditPassword('');
@@ -243,10 +257,13 @@ export default function ManageUsers() {
         email: editUser.email,
         contactName: editUser.contactName,
         middleName: isStaff ? editUser.middleName : undefined,
+        school_id: editUser.school_id,
         schoolName: editUser.schoolName,
         principalName: editUser.principalName,
+        supervisor: editUser.supervisor,
         positionTitle: editUser.positionTitle,
         department: editUser.department,
+        office_id: editUser.office_id,
         phone: editUser.phone,
       });
 
@@ -268,14 +285,6 @@ export default function ManageUsers() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -283,40 +292,107 @@ export default function ManageUsers() {
         <Link to="/admin" className="text-gray-500 hover:text-academica-blue text-sm mb-2 inline-block">
           ← Back to Dashboard
         </Link>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-charcoal">Manage Users</h1>
-            <p className="text-gray-600 mt-2">
-              {filteredUsers.length === users.length
-                ? `${users.length} registered users`
-                : `${filteredUsers.length} of ${users.length} users`}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search users..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input pl-10 w-full sm:w-64"
-              />
-            </div>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="btn btn-primary flex items-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add User
-            </button>
-          </div>
-        </div>
+        <h1 className="text-3xl font-bold text-charcoal">Manage Users, Schools & Offices</h1>
       </div>
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'users'
+                ? 'border-academica-blue text-academica-blue'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              Users
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('schools')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'schools'
+                ? 'border-academica-blue text-academica-blue'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              Schools
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('offices')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'offices'
+                ? 'border-academica-blue text-academica-blue'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Offices
+            </div>
+          </button>
+        </nav>
+      </div>
+
+      {/* Schools Tab Content */}
+      {activeTab === 'schools' && <SchoolsTab />}
+
+      {/* Offices Tab Content */}
+      {activeTab === 'offices' && <OfficesTab />}
+
+      {/* Users Tab Content */}
+      {activeTab === 'users' && (
+        loading ? (
+          <div className="flex justify-center py-12">
+            <LoadingSpinner size="lg" />
+          </div>
+        ) : (
+        <>
+          {/* Users Tab Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div>
+              <p className="text-gray-600">
+                {filteredUsers.length === users.length
+                  ? `${users.length} registered users`
+                  : `${filteredUsers.length} of ${users.length} users`}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search users..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="input pl-10 w-full sm:w-64"
+                />
+              </div>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="btn btn-primary flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add User
+              </button>
+            </div>
+          </div>
 
       {/* Users List */}
       <div className="space-y-4">
@@ -352,6 +428,9 @@ export default function ManageUsers() {
                         <p><span className="font-medium">School:</span> {user.schoolName || 'Not specified'}</p>
                         {user.principalName && (
                           <p><span className="font-medium">Principal:</span> {user.principalName}</p>
+                        )}
+                        {user.supervisor && (
+                          <p><span className="font-medium">Supervisor:</span> {user.supervisor}</p>
                         )}
                       </>
                     )}
@@ -511,6 +590,9 @@ export default function ManageUsers() {
           Click "View Orders" to see a user's complete order history.
         </p>
       </div>
+        </>
+        )
+      )}
 
       {/* Add User Modal */}
       {showAddModal && (
@@ -611,26 +693,30 @@ export default function ManageUsers() {
                 />
               </div>
 
-              {(newUser.userType === 'school_staff' || newUser.userType === 'admin' || newUser.userType === 'superadmin') && (
+              {newUser.userType === 'school_staff' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">School Name</label>
-                    <input
-                      type="text"
-                      value={newUser.schoolName}
-                      onChange={(e) => setNewUser({ ...newUser, schoolName: e.target.value })}
-                      className="input w-full"
-                      placeholder="Academica Charter School"
+                    <label className="block text-sm font-medium text-gray-700 mb-1">School *</label>
+                    <SchoolDropdown
+                      value={newUser.school_id}
+                      onChange={(schoolId) => setNewUser({ ...newUser, school_id: schoolId })}
+                      onPrincipalChange={(principalName) => setNewUser(prev => ({ ...prev, principalName }))}
                     />
                   </div>
+                  {newUser.principalName && (
+                    <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                      <span className="font-medium text-gray-700">Principal: </span>
+                      <span className="text-gray-600">{newUser.principalName}</span>
+                    </div>
+                  )}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Principal's Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Supervisor's Name</label>
                     <input
                       type="text"
-                      value={newUser.principalName}
-                      onChange={(e) => setNewUser({ ...newUser, principalName: e.target.value })}
+                      value={newUser.supervisor}
+                      onChange={(e) => setNewUser({ ...newUser, supervisor: e.target.value })}
                       className="input w-full"
-                      placeholder="Dr. Jane Smith"
+                      placeholder="User's direct supervisor"
                     />
                   </div>
                   <div>
@@ -647,16 +733,35 @@ export default function ManageUsers() {
               )}
 
               {newUser.userType === 'academica_employee' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                  <input
-                    type="text"
-                    value={newUser.department}
-                    onChange={(e) => setNewUser({ ...newUser, department: e.target.value })}
-                    className="input w-full"
-                    placeholder="Marketing"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Office *</label>
+                    <OfficeDropdown
+                      value={newUser.office_id}
+                      onChange={(officeId) => setNewUser({ ...newUser, office_id: officeId })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                    <input
+                      type="text"
+                      value={newUser.department}
+                      onChange={(e) => setNewUser({ ...newUser, department: e.target.value })}
+                      className="input w-full"
+                      placeholder="Marketing"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Position/Title</label>
+                    <input
+                      type="text"
+                      value={newUser.positionTitle}
+                      onChange={(e) => setNewUser({ ...newUser, positionTitle: e.target.value })}
+                      className="input w-full"
+                      placeholder="Marketing Manager"
+                    />
+                  </div>
+                </>
               )}
 
               <div>
@@ -742,23 +847,28 @@ export default function ManageUsers() {
                 />
               </div>
 
-              {(editUser.userType === 'school_staff' || editUser.userType === 'admin' || editUser.userType === 'superadmin') && (
+              {editUser.userType === 'school_staff' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">School Name</label>
-                    <input
-                      type="text"
-                      value={editUser.schoolName}
-                      onChange={(e) => setEditUser({ ...editUser, schoolName: e.target.value })}
-                      className="input w-full"
+                    <label className="block text-sm font-medium text-gray-700 mb-1">School *</label>
+                    <SchoolDropdown
+                      value={editUser.school_id}
+                      onChange={(schoolId) => setEditUser({ ...editUser, school_id: schoolId })}
+                      onPrincipalChange={(principalName) => setEditUser(prev => ({ ...prev, principalName }))}
                     />
                   </div>
+                  {editUser.principalName && (
+                    <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                      <span className="font-medium text-gray-700">Principal: </span>
+                      <span className="text-gray-600">{editUser.principalName}</span>
+                    </div>
+                  )}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Principal's Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Supervisor's Name</label>
                     <input
                       type="text"
-                      value={editUser.principalName}
-                      onChange={(e) => setEditUser({ ...editUser, principalName: e.target.value })}
+                      value={editUser.supervisor}
+                      onChange={(e) => setEditUser({ ...editUser, supervisor: e.target.value })}
                       className="input w-full"
                     />
                   </div>
@@ -775,15 +885,33 @@ export default function ManageUsers() {
               )}
 
               {editUser.userType === 'academica_employee' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                  <input
-                    type="text"
-                    value={editUser.department}
-                    onChange={(e) => setEditUser({ ...editUser, department: e.target.value })}
-                    className="input w-full"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Office *</label>
+                    <OfficeDropdown
+                      value={editUser.office_id}
+                      onChange={(officeId) => setEditUser({ ...editUser, office_id: officeId })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                    <input
+                      type="text"
+                      value={editUser.department}
+                      onChange={(e) => setEditUser({ ...editUser, department: e.target.value })}
+                      className="input w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Position/Title</label>
+                    <input
+                      type="text"
+                      value={editUser.positionTitle}
+                      onChange={(e) => setEditUser({ ...editUser, positionTitle: e.target.value })}
+                      className="input w-full"
+                    />
+                  </div>
+                </>
               )}
 
               <div>

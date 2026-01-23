@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import SchoolDropdown from '../components/SchoolDropdown';
+import OfficeDropdown from '../components/OfficeDropdown';
 
 const USER_TYPES = [
   {
@@ -36,13 +38,15 @@ export default function Register() {
     contactName: '',
     positionTitle: '',
     // School staff fields
+    school_id: '',
     schoolName: '',
     principalName: '',
+    supervisor: '',
     // Academica employee fields
+    office_id: '',
     department: '',
     // Common fields
     phone: '',
-    address: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -66,6 +70,26 @@ export default function Register() {
       return;
     }
 
+    // School staff validation
+    if (formData.userType === 'school_staff') {
+      if (!formData.school_id) {
+        setError('Please select a school');
+        return;
+      }
+      if (!formData.supervisor || !formData.supervisor.trim()) {
+        setError('Supervisor name is required');
+        return;
+      }
+    }
+
+    // Academica employee validation
+    if (formData.userType === 'academica_employee') {
+      if (!formData.office_id) {
+        setError('Please select an office');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -75,11 +99,13 @@ export default function Register() {
         middleName: formData.middleName.trim(),
         contactName: formData.contactName,
         positionTitle: formData.positionTitle,
+        school_id: formData.school_id,
         schoolName: formData.schoolName,
         principalName: formData.principalName,
+        supervisor: formData.supervisor?.trim(),
+        office_id: formData.office_id,
         department: formData.department,
         phone: formData.phone,
-        address: formData.address,
       });
       navigate('/products');
     } catch (err) {
@@ -177,34 +203,37 @@ export default function Register() {
                 {formData.userType === 'school_staff' && (
                   <>
                     <div>
-                      <label htmlFor="schoolName" className="block text-sm font-medium text-gray-700 mb-1">
-                        School Name *
+                      <label htmlFor="school_id" className="block text-sm font-medium text-gray-700 mb-1">
+                        School *
                       </label>
-                      <input
-                        type="text"
-                        id="schoolName"
-                        name="schoolName"
-                        value={formData.schoolName}
-                        onChange={handleChange}
+                      <SchoolDropdown
+                        value={formData.school_id}
+                        onChange={(schoolId) => setFormData({ ...formData, school_id: schoolId })}
+                        onPrincipalChange={(principalName) => setFormData(prev => ({ ...prev, principalName }))}
                         required
-                        className="input"
-                        placeholder="Academica Charter School"
                       />
                     </div>
 
+                    {formData.principalName && (
+                      <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                        <span className="font-medium text-gray-700">Principal: </span>
+                        <span className="text-gray-600">{formData.principalName}</span>
+                      </div>
+                    )}
+
                     <div>
-                      <label htmlFor="principalName" className="block text-sm font-medium text-gray-700 mb-1">
-                        Principal's Name *
+                      <label htmlFor="supervisor" className="block text-sm font-medium text-gray-700 mb-1">
+                        Supervisor's Name *
                       </label>
                       <input
                         type="text"
-                        id="principalName"
-                        name="principalName"
-                        value={formData.principalName}
+                        id="supervisor"
+                        name="supervisor"
+                        value={formData.supervisor}
                         onChange={handleChange}
                         required
                         className="input"
-                        placeholder="Dr. Jane Smith"
+                        placeholder="Your direct supervisor's name"
                       />
                     </div>
                   </>
@@ -212,21 +241,34 @@ export default function Register() {
 
                 {/* Academica Employee Fields */}
                 {formData.userType === 'academica_employee' && (
-                  <div>
-                    <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
-                      Department *
-                    </label>
-                    <input
-                      type="text"
-                      id="department"
-                      name="department"
-                      value={formData.department}
-                      onChange={handleChange}
-                      required
-                      className="input"
-                      placeholder="Marketing, Operations, etc."
-                    />
-                  </div>
+                  <>
+                    <div>
+                      <label htmlFor="office_id" className="block text-sm font-medium text-gray-700 mb-1">
+                        Office *
+                      </label>
+                      <OfficeDropdown
+                        value={formData.office_id}
+                        onChange={(officeId) => setFormData({ ...formData, office_id: officeId })}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
+                        Department *
+                      </label>
+                      <input
+                        type="text"
+                        id="department"
+                        name="department"
+                        value={formData.department}
+                        onChange={handleChange}
+                        required
+                        className="input"
+                        placeholder="Marketing, Operations, etc."
+                      />
+                    </div>
+                  </>
                 )}
 
                 {/* Email */}
@@ -259,22 +301,6 @@ export default function Register() {
                     onChange={handleChange}
                     className="input"
                     placeholder="(555) 123-4567"
-                  />
-                </div>
-
-                {/* Address */}
-                <div>
-                  <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                    {formData.userType === 'school_staff' ? 'School Address' : 'Office Address'}
-                  </label>
-                  <input
-                    type="text"
-                    id="address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    className="input"
-                    placeholder="123 Main St, City, State 12345"
                   />
                 </div>
 

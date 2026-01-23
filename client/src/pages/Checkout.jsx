@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { ordersAPI, adminAPI } from '../services/api';
+import SchoolDropdown from '../components/SchoolDropdown';
+import OfficeDropdown from '../components/OfficeDropdown';
 
 export default function Checkout() {
   const { items, clearCart } = useCart();
@@ -28,11 +30,14 @@ export default function Checkout() {
     : user?.userType === 'academica_employee';
 
   const [formData, setFormData] = useState({
+    school_id: '',
     schoolName: '',
     contactName: '',
     positionTitle: '',
     department: '',
     principalName: '',
+    supervisor: '',
+    office_id: '',
     email: '',
     phone: '',
     additionalEmails: '',
@@ -57,11 +62,14 @@ export default function Checkout() {
     } else {
       // Non-admin users: populate with their own info
       setFormData({
+        school_id: user?.school_id || '',
         schoolName: user?.schoolName || '',
         contactName: user?.contactName || '',
         positionTitle: user?.positionTitle || '',
         department: user?.department || '',
         principalName: user?.principalName || '',
+        supervisor: user?.supervisor || '',
+        office_id: user?.office_id || '',
         email: user?.email || '',
         phone: user?.phone || '',
         additionalEmails: '',
@@ -115,11 +123,14 @@ export default function Checkout() {
     setShowUserDropdown(false);
     // Clear form when switching types
     setFormData({
+      school_id: '',
       schoolName: '',
       contactName: '',
       positionTitle: '',
       department: '',
       principalName: '',
+      supervisor: '',
+      office_id: '',
       email: '',
       phone: '',
       additionalEmails: '',
@@ -136,11 +147,14 @@ export default function Checkout() {
       setUserSearch('');
       // Clear form if no user selected
       setFormData({
+        school_id: '',
         schoolName: '',
         contactName: '',
         positionTitle: '',
         department: '',
         principalName: '',
+        supervisor: '',
+        office_id: '',
         email: '',
         phone: '',
         additionalEmails: '',
@@ -154,11 +168,14 @@ export default function Checkout() {
       // Update search field to show selected user
       setUserSearch(selectedUser.contactName + (selectedUser.schoolName ? ` - ${selectedUser.schoolName}` : selectedUser.department ? ` - ${selectedUser.department}` : ''));
       setFormData({
+        school_id: selectedUser.school_id || '',
         schoolName: selectedUser.schoolName || '',
         contactName: selectedUser.contactName || '',
         positionTitle: selectedUser.positionTitle || '',
         department: selectedUser.department || '',
         principalName: selectedUser.principalName || '',
+        supervisor: selectedUser.supervisor || '',
+        office_id: selectedUser.office_id || '',
         email: selectedUser.email || '',
         phone: selectedUser.phone || '',
         additionalEmails: '',
@@ -198,6 +215,7 @@ export default function Checkout() {
             // Academica employee - internal use, no school
             contactName: formData.contactName,
             department: formData.department,
+            office_id: formData.office_id,
             email: formData.email,
             phone: formData.phone,
             additionalEmails,
@@ -206,10 +224,12 @@ export default function Checkout() {
           }
         : {
             // School staff - full school info
+            school_id: formData.school_id,
             schoolName: formData.schoolName,
             contactName: formData.contactName,
             positionTitle: formData.positionTitle,
             principalName: formData.principalName,
+            supervisor: formData.supervisor,
             email: formData.email,
             phone: formData.phone,
             additionalEmails,
@@ -325,11 +345,14 @@ export default function Checkout() {
                                 setSelectedUserId('');
                                 setShowUserDropdown(false);
                                 setFormData({
+                                  school_id: '',
                                   schoolName: '',
                                   contactName: '',
                                   positionTitle: '',
                                   department: '',
                                   principalName: '',
+                                  supervisor: '',
+                                  office_id: '',
                                   email: '',
                                   phone: '',
                                   additionalEmails: '',
@@ -404,38 +427,57 @@ export default function Checkout() {
               )}
 
               <form id="checkout-form" onSubmit={handleSubmit} className="space-y-5">
+                {/* Office field - only for Academica employees */}
+                {isAcademicaEmployee && (
+                  <div>
+                    <label htmlFor="office_id" className="block text-sm font-medium text-gray-700 mb-1">
+                      Office *
+                    </label>
+                    <OfficeDropdown
+                      value={formData.office_id}
+                      onChange={(officeId) => setFormData(prev => ({ ...prev, office_id: officeId }))}
+                      required
+                    />
+                  </div>
+                )}
                 {/* School fields - only for school staff */}
                 {!isAcademicaEmployee && (
                   <>
                     <div>
-                      <label htmlFor="schoolName" className="block text-sm font-medium text-gray-700 mb-1">
-                        School Name *
+                      <label htmlFor="school_id" className="block text-sm font-medium text-gray-700 mb-1">
+                        School *
                       </label>
-                      <input
-                        type="text"
-                        id="schoolName"
-                        name="schoolName"
-                        value={formData.schoolName}
-                        onChange={handleChange}
+                      <SchoolDropdown
+                        value={formData.school_id}
+                        onChange={(schoolId) => {
+                          // Also look up school name from the dropdown's list
+                          setFormData(prev => ({ ...prev, school_id: schoolId }));
+                        }}
+                        onPrincipalChange={(principalName) => setFormData(prev => ({ ...prev, principalName }))}
                         required
-                        className="input"
-                        placeholder="Academica Charter School"
                       />
                     </div>
 
+                    {formData.principalName && (
+                      <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                        <span className="font-medium text-gray-700">Principal: </span>
+                        <span className="text-gray-600">{formData.principalName}</span>
+                      </div>
+                    )}
+
                     <div>
-                      <label htmlFor="principalName" className="block text-sm font-medium text-gray-700 mb-1">
-                        Principal's Name *
+                      <label htmlFor="supervisor" className="block text-sm font-medium text-gray-700 mb-1">
+                        Supervisor's Name *
                       </label>
                       <input
                         type="text"
-                        id="principalName"
-                        name="principalName"
-                        value={formData.principalName}
+                        id="supervisor"
+                        name="supervisor"
+                        value={formData.supervisor}
                         onChange={handleChange}
                         required
                         className="input"
-                        placeholder="Dr. Jane Smith"
+                        placeholder="Your direct supervisor's name"
                       />
                     </div>
                   </>

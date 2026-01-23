@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdirSync, existsSync } from 'fs';
+import { v4 as uuidv4 } from 'uuid';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -152,6 +153,42 @@ export function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_proofs_order ON proofs(orderId);
     CREATE INDEX IF NOT EXISTS idx_proofs_token ON proofs(accessToken);
     CREATE INDEX IF NOT EXISTS idx_proof_annotations ON proof_annotations(proofId);
+
+    CREATE TABLE IF NOT EXISTS schools (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      principal_name TEXT,
+      address TEXT,
+      city TEXT,
+      state TEXT,
+      zip TEXT,
+      phone TEXT,
+      email TEXT,
+      district TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_schools_name ON schools(name);
+    CREATE INDEX IF NOT EXISTS idx_schools_active ON schools(is_active);
+
+    CREATE TABLE IF NOT EXISTS offices (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      address TEXT,
+      city TEXT,
+      state TEXT,
+      zip TEXT,
+      phone TEXT,
+      email TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_offices_name ON offices(name);
+    CREATE INDEX IF NOT EXISTS idx_offices_active ON offices(is_active);
   `);
 
   // Migration: Add new columns if they don't exist
@@ -330,6 +367,78 @@ export function initializeDatabase() {
     console.log('Added overview column to products table');
   } catch (e) {
     // Column already exists
+  }
+
+  // Migration: Add supervisor column to users
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN supervisor TEXT`);
+    console.log('Added supervisor column to users table');
+  } catch (e) {
+    // Column already exists
+  }
+
+  // Migration: Add school_id column to users (references schools table)
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN school_id TEXT`);
+    console.log('Added school_id column to users table');
+  } catch (e) {
+    // Column already exists
+  }
+
+  // Migration: Create index for school_id in users table
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_users_school ON users(school_id)`);
+  } catch (e) {
+    // Index might already exist
+  }
+
+  // Migration: Add office_id column to users (references offices table)
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN office_id TEXT`);
+    console.log('Added office_id column to users table');
+  } catch (e) {
+    // Column already exists
+  }
+
+  // Migration: Create index for office_id in users table
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_users_office ON users(office_id)`);
+  } catch (e) {
+    // Index might already exist
+  }
+
+  // Data Migration: Create schools from existing unique school names in users table
+  try {
+    const existingSchools = db.prepare(`SELECT COUNT(*) as count FROM schools`).get();
+    if (existingSchools.count === 0) {
+      // Get unique school names from users
+      const uniqueSchools = db.prepare(`
+        SELECT DISTINCT schoolName, principalName
+        FROM users
+        WHERE schoolName IS NOT NULL AND schoolName != '' AND schoolName != 'N/A' AND schoolName != 'Admin'
+        GROUP BY schoolName
+      `).all();
+
+      if (uniqueSchools.length > 0) {
+        const insertSchool = db.prepare(`
+          INSERT INTO schools (id, name, principal_name, is_active, created_at, updated_at)
+          VALUES (?, ?, ?, 1, datetime('now'), datetime('now'))
+        `);
+
+        const updateUser = db.prepare(`
+          UPDATE users SET school_id = ? WHERE schoolName = ?
+        `);
+
+        for (const school of uniqueSchools) {
+          const schoolId = uuidv4();
+          insertSchool.run(schoolId, school.schoolName, school.principalName || null);
+          updateUser.run(schoolId, school.schoolName);
+        }
+        console.log(`Migrated ${uniqueSchools.length} schools from users table`);
+      }
+    }
+  } catch (e) {
+    console.error('Error migrating schools:', e.message);
   }
 
   // Sync overview data for all products (always update to ensure latest content)
