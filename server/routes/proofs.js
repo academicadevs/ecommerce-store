@@ -346,7 +346,7 @@ router.post('/review/:accessToken/signoff', (req, res) => {
         senderEmail: proof.shippingInfo?.email || signedOffBy,
         recipientEmail: process.env.SENDGRID_FROM_EMAIL || 'orders@academicamart.com',
         subject: `Proof Approved - Order #${order.orderNumber}`,
-        body: `${signedOffBy} has approved Proof Version ${proof.version}.\n\nSignature: ${signature}\nSigned at: ${new Date().toLocaleString()}`,
+        body: `${signedOffBy} has approved Proof Version ${proof.version}.\n\nSignature: ${signature}\nSigned at: ${new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })}`,
         replyToToken: `proof-signoff-${proof.id}`
       });
     }
