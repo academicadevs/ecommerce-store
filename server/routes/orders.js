@@ -133,16 +133,14 @@ router.post('/guest', async (req, res) => {
       notes: null
     });
 
-    // Send confirmation email
-    try {
-      await sendOrderConfirmationEmail(order, guestUser);
-    } catch (emailError) {
-      console.error('Failed to send guest order email:', emailError);
-    }
-
     res.status(201).json({
       message: 'Request submitted successfully',
       order
+    });
+
+    // Send confirmation email (fire-and-forget so response isn't blocked)
+    sendOrderConfirmationEmail(order, guestUser).catch(emailError => {
+      console.error('Failed to send guest order email:', emailError);
     });
   } catch (error) {
     console.error('Error creating guest order:', error);
@@ -225,17 +223,14 @@ router.post('/', async (req, res) => {
       Cart.clear(req.user.id);
     }
 
-    // Send confirmation emails
-    try {
-      await sendOrderConfirmationEmail(order, req.user);
-    } catch (emailError) {
-      console.error('Failed to send order email:', emailError);
-      // Don't fail the order if email fails
-    }
-
     res.status(201).json({
       message: 'Request submitted successfully',
       order
+    });
+
+    // Send confirmation emails (fire-and-forget so response isn't blocked)
+    sendOrderConfirmationEmail(order, req.user).catch(emailError => {
+      console.error('Failed to send order email:', emailError);
     });
   } catch (error) {
     console.error('Error creating order:', error);
