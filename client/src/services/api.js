@@ -59,8 +59,16 @@ export const cartAPI = {
 // Orders API
 export const ordersAPI = {
   create: (data) => api.post('/orders', data),
+  createGuest: (data) => api.post('/orders/guest', data),
   getAll: () => api.get('/orders'),
   getById: (id) => api.get(`/orders/${id}`),
+  uploadAttachments: (files) => {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+    return api.post('/orders/attachments', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
 };
 
 // Admin API

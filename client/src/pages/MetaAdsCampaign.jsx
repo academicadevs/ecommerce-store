@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ordersAPI, adminAPI } from '../services/api';
+import SearchableUserSelect from '../components/common/SearchableUserSelect';
 
 const campaignObjectives = [
   { value: 'enrollment', label: 'Student Enrollment', description: 'Drive applications and enrollments for your school' },
@@ -201,7 +202,7 @@ export default function MetaAdsCampaign() {
         shippingInfo: {
           schoolName: effectiveUser?.schoolName || '',
           contactName: effectiveUser?.contactName || '',
-          positionTitle: effectiveUser?.positionTitle || 'Meta Ads Campaign',
+          positionTitle: effectiveUser?.positionTitle || 'Digital Ad Campaign',
           principalName: effectiveUser?.principalName || 'N/A',
           email: effectiveUser?.email || '',
           phone: effectiveUser?.phone || '',
@@ -231,7 +232,7 @@ export default function MetaAdsCampaign() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
           <h2 className="text-2xl font-bold text-charcoal mb-4">Sign In Required</h2>
-          <p className="text-gray-600 mb-6">Please sign in to submit a Meta Ads campaign request.</p>
+          <p className="text-gray-600 mb-6">Please sign in to submit a digital ad campaign request.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/login" className="btn btn-primary px-8 py-3">
               Sign In
@@ -256,7 +257,7 @@ export default function MetaAdsCampaign() {
           </div>
           <h2 className="text-2xl font-bold text-charcoal mb-4">Campaign Request Submitted!</h2>
           <p className="text-gray-600 mb-6">
-            Thank you for your Meta Ads campaign request. Our Digital Marketing team will review
+            Thank you for your digital ad campaign request. Our Digital Marketing team will review
             your submission and reach out within 1-2 business days to discuss your campaign strategy.
           </p>
           <p className="text-sm text-gray-500">Redirecting to your requests...</p>
@@ -271,12 +272,12 @@ export default function MetaAdsCampaign() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium mb-4">
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2.04c-5.5 0-10 4.49-10 10.02 0 5 3.66 9.15 8.44 9.9v-7H7.9v-2.9h2.54V9.85c0-2.51 1.49-3.89 3.78-3.89 1.09 0 2.23.19 2.23.19v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56v1.88h2.78l-.45 2.9h-2.33v7a10 10 0 008.44-9.9c0-5.53-4.5-10.02-10-10.02z"/>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
-            Meta Advertising
+            Digital Advertising
           </div>
-          <h1 className="text-3xl font-bold text-charcoal mb-2">Digital Ads Campaign</h1>
+          <h1 className="text-3xl font-bold text-charcoal mb-2">Digital Ad Campaign</h1>
           <p className="text-gray-600 max-w-2xl mx-auto">
             Launch targeted Facebook and Instagram ad campaigns to reach prospective families
             in your community. Fill out this form to get started with our Digital Marketing team.
@@ -300,27 +301,14 @@ export default function MetaAdsCampaign() {
                 Create Campaign Request On Behalf Of
               </h2>
               <p className="text-sm text-gray-600 mb-4">
-                As an admin, you can create a Meta Ads campaign request on behalf of an existing user.
+                As an admin, you can create a digital ad campaign request on behalf of an existing user.
               </p>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Select User *</label>
-                <select
-                  value={selectedUserId}
-                  onChange={(e) => handleUserSelect(e.target.value)}
-                  required
-                  className="input"
-                  disabled={loadingUsers}
-                >
-                  <option value="">
-                    {loadingUsers ? 'Loading users...' : 'Select a user...'}
-                  </option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.contactName} - {u.schoolName} ({u.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SearchableUserSelect
+                users={users}
+                selectedUserId={selectedUserId}
+                onSelect={handleUserSelect}
+                loading={loadingUsers}
+              />
               {selectedUser && (
                 <div className="mt-4 p-4 bg-white rounded-lg border border-amber-100">
                   <p className="text-sm font-medium text-charcoal">{selectedUser.contactName}</p>

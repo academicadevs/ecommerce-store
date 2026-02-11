@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import ItemEditModal from './ItemEditModal';
+import FilePreviewModal from '../common/FilePreviewModal';
 
 // Component to display Custom Request details
-function CustomRequestDetails({ data }) {
+function CustomRequestDetails({ data, onPreviewFile }) {
   if (!data || data.requestType !== 'custom') return null;
 
   return (
@@ -90,6 +91,29 @@ function CustomRequestDetails({ data }) {
             {data.files.referenceLinks && <p><span className="text-gray-500">References:</span> {data.files.referenceLinks}</p>}
             {data.files.inspirationNotes && <p><span className="text-gray-500">Inspiration:</span> {data.files.inspirationNotes}</p>}
           </div>
+        </div>
+      )}
+
+      {/* Attachments */}
+      {data.attachments?.length > 0 && (
+        <div className="bg-blue-50 rounded p-2">
+          <span className="text-xs text-gray-500 uppercase">Attachments ({data.attachments.length})</span>
+          <ul className="mt-1 space-y-1">
+            {data.attachments.map((att) => (
+              <li key={att.filename}>
+                <button
+                  type="button"
+                  onClick={() => onPreviewFile?.(att)}
+                  className="inline-flex items-center gap-1.5 text-sm text-academica-blue hover:underline"
+                >
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                  {att.originalName}
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -228,6 +252,7 @@ export default function OrderItemEditor({ items, onUpdate, saving }) {
   const [editedItems, setEditedItems] = useState(items || []);
   const [hasChanges, setHasChanges] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [previewFile, setPreviewFile] = useState(null);
 
   const handleRemoveItem = (index) => {
     if (!confirm('Remove this item from the order?')) return;
@@ -334,7 +359,7 @@ export default function OrderItemEditor({ items, onUpdate, saving }) {
                     <div>
                       <h5 className="font-semibold text-charcoal">{item.name}</h5>
                       <span className={`text-xs ${requestType === 'meta-ads' ? 'text-indigo-600' : 'text-amber-600'}`}>
-                        {requestType === 'meta-ads' ? 'Meta Ads Campaign' : 'Custom Request'}
+                        {requestType === 'meta-ads' ? 'Digital Ad Campaign' : 'Custom Request'}
                       </span>
                     </div>
                   </div>
@@ -353,7 +378,7 @@ export default function OrderItemEditor({ items, onUpdate, saving }) {
                   {requestType === 'meta-ads' ? (
                     <MetaAdsDetails data={opts} />
                   ) : (
-                    <CustomRequestDetails data={opts} />
+                    <CustomRequestDetails data={opts} onPreviewFile={setPreviewFile} />
                   )}
                   {/* Additional Notes */}
                   {opts.additionalNotes && (
@@ -444,6 +469,11 @@ export default function OrderItemEditor({ items, onUpdate, saving }) {
           onClose={() => setEditingItem(null)}
           saving={saving}
         />
+      )}
+
+      {/* File Preview Modal */}
+      {previewFile && (
+        <FilePreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
       )}
     </div>
   );

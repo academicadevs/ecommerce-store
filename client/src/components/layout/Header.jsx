@@ -30,7 +30,12 @@ const categories = [
     link: '/custom-request'
   },
   {
-    name: 'Meta Ads',
+    name: 'Quick Request',
+    subcategories: [],
+    link: '/quick-request'
+  },
+  {
+    name: 'Digital Ad Campaign',
     subcategories: [],
     link: '/meta-ads'
   }

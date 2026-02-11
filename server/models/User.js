@@ -114,6 +114,26 @@ export const User = {
     return stmt.get().count;
   },
 
+  createGuest: async ({ email, contactName, phone, schoolName }) => {
+    const existing = User.findByEmail(email);
+    if (existing) {
+      return existing;
+    }
+
+    const id = uuidv4();
+    const randomPassword = uuidv4();
+    const hashedPassword = await bcrypt.hash(randomPassword.toLowerCase(), 10);
+
+    const stmt = db.prepare(`
+      INSERT INTO users (id, email, password, userType, schoolName, contactName, phone)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    stmt.run(id, email, hashedPassword, 'guest', schoolName || 'N/A', contactName, phone || null);
+
+    return { id, email, userType: 'guest', schoolName: schoolName || 'N/A', contactName, phone: phone || null, role: 'user' };
+  },
+
   createAdmin: async ({ email, password }) => {
     const existing = User.findByEmail(email);
     if (existing) {

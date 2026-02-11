@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ordersAPI, adminAPI } from '../services/api';
+import SearchableUserSelect from '../components/common/SearchableUserSelect';
 
 const projectTypes = [
   { value: 'custom-design', label: 'Custom Design Project', description: 'Need something designed from scratch' },
@@ -262,25 +263,12 @@ export default function CustomRequest() {
               <p className="text-sm text-gray-600 mb-4">
                 As an admin, you can create a custom request on behalf of an existing user.
               </p>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Select User *</label>
-                <select
-                  value={selectedUserId}
-                  onChange={(e) => handleUserSelect(e.target.value)}
-                  required
-                  className="input"
-                  disabled={loadingUsers}
-                >
-                  <option value="">
-                    {loadingUsers ? 'Loading users...' : 'Select a user...'}
-                  </option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.contactName} - {u.schoolName} ({u.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SearchableUserSelect
+                users={users}
+                selectedUserId={selectedUserId}
+                onSelect={handleUserSelect}
+                loading={loadingUsers}
+              />
               {selectedUser && (
                 <div className="mt-4 p-4 bg-white rounded-lg border border-amber-100">
                   <p className="text-sm font-medium text-charcoal">{selectedUser.contactName}</p>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ordersAPI } from '../services/api';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import FilePreviewModal from '../components/common/FilePreviewModal';
 
 const statusColors = {
   new: 'badge-info',
@@ -34,6 +35,7 @@ export default function OrderDetail() {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [previewFile, setPreviewFile] = useState(null);
 
   useEffect(() => {
     loadOrder();
@@ -116,7 +118,7 @@ export default function OrderDetail() {
                   {Object.keys(opts).length > 0 && (
                     <div className="text-sm text-gray-500 mt-1 space-y-0.5">
                       {Object.entries(opts).map(([key, value]) => {
-                        if (!value || key === 'customText' || key === 'artworkOption') return null;
+                        if (!value || key === 'customText' || key === 'artworkOption' || key === 'attachments') return null;
                         const label = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
                         return <p key={key}>{label}: {value}</p>;
                       })}
@@ -129,6 +131,27 @@ export default function OrderDetail() {
                           {opts.customText.subheadline && <p>Subheadline: {opts.customText.subheadline}</p>}
                           {opts.customText.bodyText && <p>Body Text: {opts.customText.bodyText}</p>}
                         </>
+                      )}
+                      {opts.attachments && opts.attachments.length > 0 && (
+                        <div className="mt-2">
+                          <p className="font-medium text-gray-700 mb-1">Attachments:</p>
+                          <ul className="space-y-1">
+                            {opts.attachments.map((att) => (
+                              <li key={att.filename}>
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewFile(att)}
+                                  className="inline-flex items-center gap-1.5 text-academica-blue hover:underline"
+                                >
+                                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                  </svg>
+                                  {att.originalName}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       )}
                     </div>
                   )}
@@ -191,6 +214,10 @@ export default function OrderDetail() {
           Submit New Request
         </Link>
       </div>
+
+      {previewFile && (
+        <FilePreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
+      )}
     </div>
   );
 }

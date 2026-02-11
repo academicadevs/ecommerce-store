@@ -3,12 +3,14 @@ import { useAuth } from './context/AuthContext';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import QuickRequestPromo from './components/QuickRequestPromo';
 
 // Pages
 import Home from './pages/Home';
 import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
 import CustomRequest from './pages/CustomRequest';
+import QuickRequest from './pages/QuickRequest';
 import MetaAdsCampaign from './pages/MetaAdsCampaign';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
@@ -77,6 +79,7 @@ export default function App() {
               <Route path="/products" element={<Products />} />
               <Route path="/products/:id" element={<ProductDetail />} />
               <Route path="/custom-request" element={<CustomRequest />} />
+              <Route path="/quick-request" element={<QuickRequest />} />
               <Route path="/meta-ads" element={<MetaAdsCampaign />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
@@ -101,6 +104,7 @@ export default function App() {
             </Routes>
           </main>
           <Footer />
+          <QuickRequestPromo />
         </div>
       } />
     </Routes>

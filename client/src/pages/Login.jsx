@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -13,6 +14,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const returnUrl = searchParams.get('returnUrl');
   const from = location.state?.from?.pathname || '/';
 
   const handleChange = (e) => {
@@ -27,7 +29,10 @@ export default function Login() {
 
     try {
       const user = await login(formData.email, formData.password);
-      if (user.role === 'admin') {
+      // Support returnUrl query param (must start with / to prevent open redirects)
+      if (returnUrl && returnUrl.startsWith('/')) {
+        navigate(returnUrl, { replace: true });
+      } else if (user.role === 'admin') {
         navigate('/admin', { replace: true });
       } else {
         navigate('/products', { replace: true });
