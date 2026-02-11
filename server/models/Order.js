@@ -156,6 +156,18 @@ export const Order = {
     return Order.findById(id);
   },
 
+  updateShippingInfo: (id, updatedFields) => {
+    const order = Order.findById(id);
+    if (!order) return null;
+
+    const shippingInfo = { ...order.shippingInfo, ...updatedFields };
+
+    const stmt = db.prepare('UPDATE orders SET shippingInfo = ? WHERE id = ?');
+    stmt.run(JSON.stringify(shippingInfo), id);
+
+    return Order.findById(id);
+  },
+
   updateAdditionalEmails: (id, additionalEmails) => {
     const order = Order.findById(id);
     if (!order) return null;

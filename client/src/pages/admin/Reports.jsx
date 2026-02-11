@@ -7,6 +7,7 @@ import ProductsTab from '../../components/reports/tabs/ProductsTab';
 import UsersTab from '../../components/reports/tabs/UsersTab';
 import CommunicationsTab from '../../components/reports/tabs/CommunicationsTab';
 import StaffTab from '../../components/reports/tabs/StaffTab';
+import usePolling from '../../hooks/usePolling';
 
 const tabs = [
   { id: 'overview', label: 'Overview', icon: 'dashboard' },
@@ -66,22 +67,29 @@ export default function Reports() {
     endDate: today
   });
 
+  const [pollKey, setPollKey] = useState(0);
+
+  // Poll every 60s - bump key to trigger child re-fetch
+  usePolling(() => {
+    setPollKey(k => k + 1);
+  }, 60000, true);
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <ReportsDashboard dateRange={dateRange} />;
+        return <ReportsDashboard dateRange={dateRange} key={`overview-${pollKey}`} />;
       case 'orders':
-        return <OrdersTab dateRange={dateRange} />;
+        return <OrdersTab dateRange={dateRange} key={`orders-${pollKey}`} />;
       case 'products':
-        return <ProductsTab dateRange={dateRange} />;
+        return <ProductsTab dateRange={dateRange} key={`products-${pollKey}`} />;
       case 'users':
-        return <UsersTab dateRange={dateRange} />;
+        return <UsersTab dateRange={dateRange} key={`users-${pollKey}`} />;
       case 'communications':
-        return <CommunicationsTab dateRange={dateRange} />;
+        return <CommunicationsTab dateRange={dateRange} key={`communications-${pollKey}`} />;
       case 'staff':
-        return <StaffTab dateRange={dateRange} />;
+        return <StaffTab dateRange={dateRange} key={`staff-${pollKey}`} />;
       default:
-        return <ReportsDashboard dateRange={dateRange} />;
+        return <ReportsDashboard dateRange={dateRange} key={`default-${pollKey}`} />;
     }
   };
 

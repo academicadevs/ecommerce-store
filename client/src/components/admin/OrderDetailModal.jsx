@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Modal from '../common/Modal';
 import OrderItemEditor from './OrderItemEditor';
 import CommunicationFeed from './CommunicationFeed';
 import EmailComposer from './EmailComposer';
 import ProofManager from './ProofManager';
 import { adminAPI } from '../../services/api';
+import usePolling from '../../hooks/usePolling';
 
 const statusOptions = ['new', 'waiting_feedback', 'in_progress', 'submitted_to_kimp360', 'waiting_signoff', 'sent_to_print', 'completed', 'on_hold'];
 
@@ -47,6 +48,17 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
   const [ccEmails, setCcEmails] = useState([]);
   const [newCcEmail, setNewCcEmail] = useState('');
   const [savingCc, setSavingCc] = useState(false);
+  const [editingCustomerInfo, setEditingCustomerInfo] = useState(false);
+  const [customerInfoDraft, setCustomerInfoDraft] = useState({});
+  const [savingCustomerInfo, setSavingCustomerInfo] = useState(false);
+
+  const orderStatusRef = useRef(order?.status);
+  const orderAssignedRef = useRef(order?.assignedTo);
+
+  useEffect(() => {
+    orderStatusRef.current = order?.status;
+    orderAssignedRef.current = order?.assignedTo;
+  }, [order?.status, order?.assignedTo]);
 
   useEffect(() => {
     if (isOpen && order) {
@@ -56,6 +68,24 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
       setCcEmails(order.shippingInfo?.additionalEmails || []);
     }
   }, [isOpen, order?.id]);
+
+  // Poll every 15s while modal is open
+  usePolling(async () => {
+    const [orderRes, notesRes, commsRes, proofsRes] = await Promise.all([
+      adminAPI.getOrder(order.id),
+      adminAPI.getOrderNotes(order.id),
+      adminAPI.getOrderCommunications(order.id),
+      adminAPI.getOrderProofs(order.id),
+    ]);
+    setNotes(notesRes.data.notes || []);
+    setCommunications(commsRes.data.communications || []);
+    setProofs(proofsRes.data.proofs || []);
+    // Only trigger parent refresh if status/assignment actually changed
+    const fetched = orderRes.data.order;
+    if (fetched.status !== orderStatusRef.current || fetched.assignedTo !== orderAssignedRef.current) {
+      onUpdate();
+    }
+  }, 15000, isOpen && !!order);
 
   const loadNotes = async () => {
     if (!order) return;
@@ -223,6 +253,39 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
     }
   };
 
+  const handleEditCustomerInfo = () => {
+    const info = order.shippingInfo || {};
+    setCustomerInfoDraft({
+      schoolName: info.schoolName || '',
+      contactName: info.contactName || '',
+      positionTitle: info.positionTitle || '',
+      principalName: info.principalName || '',
+      email: info.email || '',
+      phone: info.phone || '',
+      department: info.department || '',
+    });
+    setEditingCustomerInfo(true);
+  };
+
+  const handleSaveCustomerInfo = async () => {
+    setSavingCustomerInfo(true);
+    try {
+      await adminAPI.updateShippingInfo(order.id, customerInfoDraft);
+      setEditingCustomerInfo(false);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to update customer info:', error);
+      alert('Failed to update customer info');
+    } finally {
+      setSavingCustomerInfo(false);
+    }
+  };
+
+  const handleCancelCustomerEdit = () => {
+    setEditingCustomerInfo(false);
+    setCustomerInfoDraft({});
+  };
+
   if (!order) return null;
 
   const customerEmail = order.shippingInfo?.email || order.email;
@@ -299,6 +362,17 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
                 {order.shippingInfo?.isInternalOrder ? 'Contact Information' : 'Customer Information'}
+                {!editingCustomerInfo && (
+                  <button
+                    onClick={handleEditCustomerInfo}
+                    className="ml-auto p-1.5 text-gray-400 hover:text-academica-blue hover:bg-blue-50 rounded transition-colors"
+                    title="Edit customer info"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                )}
               </h3>
               {order.shippingInfo?.isInternalOrder && (
                 <div className="bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 mb-3 text-sm text-purple-800 font-medium">
@@ -306,70 +380,148 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
                 </div>
               )}
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                {order.shippingInfo?.isInternalOrder ? (
+                {editingCustomerInfo ? (
                   <>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs text-gray-500 uppercase tracking-wide">Contact</label>
-                        <p className="font-medium text-charcoal">{order.shippingInfo?.contactName || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 uppercase tracking-wide">Department</label>
-                        <p className="text-gray-900">{order.shippingInfo?.department || 'N/A'}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs text-gray-500 uppercase tracking-wide">Email</label>
-                        <p className="text-gray-900 break-all text-sm">{customerEmail || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 uppercase tracking-wide">Phone</label>
-                        <p className="text-gray-900">{order.shippingInfo?.phone || 'N/A'}</p>
-                      </div>
-                    </div>
-                    {order.shippingInfo?.additionalEmails?.length > 0 && (
-                      <div>
-                        <label className="text-xs text-gray-500 uppercase tracking-wide">CC Recipients</label>
-                        <p className="text-gray-900 break-all text-sm">{order.shippingInfo.additionalEmails.join(', ')}</p>
-                      </div>
+                    {order.shippingInfo?.isInternalOrder ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">Contact</label>
+                            <input type="text" value={customerInfoDraft.contactName} onChange={(e) => setCustomerInfoDraft(d => ({ ...d, contactName: e.target.value }))} className="input w-full mt-1 text-sm" />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">Department</label>
+                            <input type="text" value={customerInfoDraft.department} onChange={(e) => setCustomerInfoDraft(d => ({ ...d, department: e.target.value }))} className="input w-full mt-1 text-sm" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">Email</label>
+                            <input type="email" value={customerInfoDraft.email} onChange={(e) => setCustomerInfoDraft(d => ({ ...d, email: e.target.value }))} className="input w-full mt-1 text-sm" />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">Phone</label>
+                            <input type="tel" value={customerInfoDraft.phone} onChange={(e) => setCustomerInfoDraft(d => ({ ...d, phone: e.target.value }))} className="input w-full mt-1 text-sm" />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="text-xs text-gray-500 uppercase tracking-wide">School Name</label>
+                          <input type="text" value={customerInfoDraft.schoolName} onChange={(e) => setCustomerInfoDraft(d => ({ ...d, schoolName: e.target.value }))} className="input w-full mt-1 text-sm" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">Contact</label>
+                            <input type="text" value={customerInfoDraft.contactName} onChange={(e) => setCustomerInfoDraft(d => ({ ...d, contactName: e.target.value }))} className="input w-full mt-1 text-sm" />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">Position</label>
+                            <input type="text" value={customerInfoDraft.positionTitle} onChange={(e) => setCustomerInfoDraft(d => ({ ...d, positionTitle: e.target.value }))} className="input w-full mt-1 text-sm" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 uppercase tracking-wide">Principal</label>
+                          <input type="text" value={customerInfoDraft.principalName} onChange={(e) => setCustomerInfoDraft(d => ({ ...d, principalName: e.target.value }))} className="input w-full mt-1 text-sm" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">Email</label>
+                            <input type="email" value={customerInfoDraft.email} onChange={(e) => setCustomerInfoDraft(d => ({ ...d, email: e.target.value }))} className="input w-full mt-1 text-sm" />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">Phone</label>
+                            <input type="tel" value={customerInfoDraft.phone} onChange={(e) => setCustomerInfoDraft(d => ({ ...d, phone: e.target.value }))} className="input w-full mt-1 text-sm" />
+                          </div>
+                        </div>
+                      </>
                     )}
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={handleSaveCustomerInfo}
+                        disabled={savingCustomerInfo}
+                        className="px-3 py-1.5 text-sm bg-academica-blue text-white rounded hover:bg-academica-blue-dark disabled:opacity-50"
+                      >
+                        {savingCustomerInfo ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={handleCancelCustomerEdit}
+                        disabled={savingCustomerInfo}
+                        className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </>
                 ) : (
                   <>
-                    <div>
-                      <label className="text-xs text-gray-500 uppercase tracking-wide">School Name</label>
-                      <p className="font-medium text-charcoal">{order.shippingInfo?.schoolName || order.schoolName || 'N/A'}</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs text-gray-500 uppercase tracking-wide">Contact</label>
-                        <p className="text-gray-900">{order.shippingInfo?.contactName || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 uppercase tracking-wide">Position</label>
-                        <p className="text-gray-900">{order.shippingInfo?.positionTitle || 'N/A'}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 uppercase tracking-wide">Principal</label>
-                      <p className="text-gray-900">{order.shippingInfo?.principalName || 'N/A'}</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs text-gray-500 uppercase tracking-wide">Email</label>
-                        <p className="text-gray-900 break-all text-sm">{customerEmail || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 uppercase tracking-wide">Phone</label>
-                        <p className="text-gray-900">{order.shippingInfo?.phone || 'N/A'}</p>
-                      </div>
-                    </div>
-                    {order.shippingInfo?.additionalEmails?.length > 0 && (
-                      <div>
-                        <label className="text-xs text-gray-500 uppercase tracking-wide">CC Recipients</label>
-                        <p className="text-gray-900 break-all text-sm">{order.shippingInfo.additionalEmails.join(', ')}</p>
-                      </div>
+                    {order.shippingInfo?.isInternalOrder ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">Contact</label>
+                            <p className="font-medium text-charcoal">{order.shippingInfo?.contactName || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">Department</label>
+                            <p className="text-gray-900">{order.shippingInfo?.department || 'N/A'}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">Email</label>
+                            <p className="text-gray-900 break-all text-sm">{customerEmail || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">Phone</label>
+                            <p className="text-gray-900">{order.shippingInfo?.phone || 'N/A'}</p>
+                          </div>
+                        </div>
+                        {order.shippingInfo?.additionalEmails?.length > 0 && (
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">CC Recipients</label>
+                            <p className="text-gray-900 break-all text-sm">{order.shippingInfo.additionalEmails.join(', ')}</p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="text-xs text-gray-500 uppercase tracking-wide">School Name</label>
+                          <p className="font-medium text-charcoal">{order.shippingInfo?.schoolName || order.schoolName || 'N/A'}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">Contact</label>
+                            <p className="text-gray-900">{order.shippingInfo?.contactName || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">Position</label>
+                            <p className="text-gray-900">{order.shippingInfo?.positionTitle || 'N/A'}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 uppercase tracking-wide">Principal</label>
+                          <p className="text-gray-900">{order.shippingInfo?.principalName || 'N/A'}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">Email</label>
+                            <p className="text-gray-900 break-all text-sm">{customerEmail || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">Phone</label>
+                            <p className="text-gray-900">{order.shippingInfo?.phone || 'N/A'}</p>
+                          </div>
+                        </div>
+                        {order.shippingInfo?.additionalEmails?.length > 0 && (
+                          <div>
+                            <label className="text-xs text-gray-500 uppercase tracking-wide">CC Recipients</label>
+                            <p className="text-gray-900 break-all text-sm">{order.shippingInfo.additionalEmails.join(', ')}</p>
+                          </div>
+                        )}
+                      </>
                     )}
                   </>
                 )}

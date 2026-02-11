@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import usePolling from '../../hooks/usePolling';
 
 const statusLabels = {
   new: 'New Request Received',
@@ -35,6 +36,17 @@ export default function AdminDashboard() {
     loadStats();
     loadNotifications();
   }, []);
+
+  // Poll every 30s
+  usePolling(async () => {
+    const [statsRes, notifsRes] = await Promise.all([
+      adminAPI.getStats(),
+      adminAPI.getRecentNotifications(),
+    ]);
+    setStats(statsRes.data.stats);
+    setNotifications(notifsRes.data.notifications || []);
+    setTotalUnread(notifsRes.data.totalUnread || { messages: 0, feedback: 0 });
+  }, 30000, true);
 
   const loadStats = async () => {
     try {

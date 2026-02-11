@@ -415,6 +415,20 @@ router.get('/orders', (req, res) => {
   }
 });
 
+// Get single order
+router.get('/orders/:id', (req, res) => {
+  try {
+    const order = Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    res.json({ order });
+  } catch (error) {
+    console.error('Error fetching order:', error);
+    res.status(500).json({ error: 'Failed to fetch order' });
+  }
+});
+
 router.put('/orders/:id', (req, res) => {
   try {
     const { status } = req.body;
@@ -487,6 +501,27 @@ router.put('/orders/:id/cc-emails', (req, res) => {
   } catch (error) {
     console.error('Error updating CC emails:', error);
     res.status(500).json({ error: 'Failed to update CC emails' });
+  }
+});
+
+// Update shipping info (customer information)
+router.put('/orders/:id/shipping-info', (req, res) => {
+  try {
+    const { shippingInfo } = req.body;
+
+    if (!shippingInfo || typeof shippingInfo !== 'object') {
+      return res.status(400).json({ error: 'shippingInfo must be an object' });
+    }
+
+    const order = Order.updateShippingInfo(req.params.id, shippingInfo);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    res.json({ message: 'Shipping info updated', order });
+  } catch (error) {
+    console.error('Error updating shipping info:', error);
+    res.status(500).json({ error: 'Failed to update shipping info' });
   }
 });
 

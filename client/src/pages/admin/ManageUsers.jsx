@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import usePolling from '../../hooks/usePolling';
 import SchoolsTab from '../../components/admin/SchoolsTab';
 import OfficesTab from '../../components/admin/OfficesTab';
 import SchoolDropdown from '../../components/SchoolDropdown';
@@ -103,6 +104,12 @@ export default function ManageUsers() {
   useEffect(() => {
     loadUsers();
   }, []);
+
+  // Poll every 30s
+  usePolling(async () => {
+    const response = await adminAPI.getUsers();
+    setUsers(response.data.users);
+  }, 30000, true);
 
   const loadUsers = async () => {
     try {

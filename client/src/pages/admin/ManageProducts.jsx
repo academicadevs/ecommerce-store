@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import usePolling from '../../hooks/usePolling';
 
 const categoryData = {
   'Marketing Materials': ['Flyers', 'Postcards', 'Brochures', 'Business Cards', 'Posters', 'Direct Mail', 'Enrollment Materials', 'Folders'],
@@ -103,6 +104,12 @@ export default function ManageProducts() {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  // Poll every 30s
+  usePolling(async () => {
+    const response = await adminAPI.getProducts();
+    setProducts(response.data.products);
+  }, 30000, true);
 
   const loadProducts = async () => {
     try {

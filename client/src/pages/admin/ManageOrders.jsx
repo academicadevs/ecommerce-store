@@ -4,6 +4,7 @@ import { adminAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import OrderDetailModal from '../../components/admin/OrderDetailModal';
+import usePolling from '../../hooks/usePolling';
 
 const statusOptions = ['new', 'waiting_feedback', 'in_progress', 'submitted_to_kimp360', 'waiting_signoff', 'sent_to_print', 'completed', 'on_hold'];
 
@@ -48,6 +49,16 @@ export default function ManageOrders() {
     loadAdmins();
     loadUnreadCounts();
   }, []);
+
+  // Poll every 20s when modal is closed
+  usePolling(async () => {
+    const [ordersRes, countsRes] = await Promise.all([
+      adminAPI.getOrders(),
+      adminAPI.getUnreadCounts(),
+    ]);
+    setOrders(ordersRes.data.orders);
+    setUnreadCounts(countsRes.data.counts || {});
+  }, 20000, !isModalOpen);
 
   const loadOrders = async () => {
     try {

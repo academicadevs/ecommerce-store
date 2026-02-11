@@ -13,13 +13,13 @@ export default function OrderVolumeChart({ data, groupBy = 'day' }) {
     if (groupBy === 'month') {
       const [year, month] = value.split('-');
       const date = new Date(year, parseInt(month) - 1);
-      return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'America/Los_Angeles' });
     }
     if (groupBy === 'week') {
       return value.replace('-W', ' W');
     }
     const date = new Date(value);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' });
   };
 
   const CustomTooltip = ({ active, payload, label }) => {

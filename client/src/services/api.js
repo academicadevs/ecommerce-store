@@ -98,6 +98,8 @@ export const adminAPI = {
   reorderProducts: (productIds) => api.put('/admin/products/reorder', { productIds }),
   // Orders
   getOrders: (filter) => api.get('/admin/orders', { params: { filter } }),
+  getOrder: (id) => api.get(`/admin/orders/${id}`),
+  updateShippingInfo: (id, shippingInfo) => api.put(`/admin/orders/${id}/shipping-info`, { shippingInfo }),
   updateOrderStatus: (id, status) => api.put(`/admin/orders/${id}`, { status }),
   assignOrder: (id, adminId) => api.put(`/admin/orders/${id}/assign`, { adminId }),
   getOrderNotes: (id) => api.get(`/admin/orders/${id}/notes`),

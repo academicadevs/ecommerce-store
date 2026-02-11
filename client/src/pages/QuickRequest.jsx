@@ -811,7 +811,7 @@ export default function QuickRequest() {
                 {chatData.eventDate && (
                   <div className="flex gap-2">
                     <span className="text-gray-500">Event Date:</span>
-                    <span className="text-charcoal">{new Date(chatData.eventDate + 'T00:00:00').toLocaleDateString()}</span>
+                    <span className="text-charcoal">{new Date(chatData.eventDate + 'T00:00:00').toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' })}</span>
                   </div>
                 )}
                 <div>

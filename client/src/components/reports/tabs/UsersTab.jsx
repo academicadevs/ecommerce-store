@@ -74,7 +74,7 @@ export default function UsersTab({ dateRange }) {
 
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' });
   };
 
   const userTypeData = usersData?.byType?.map(item => ({

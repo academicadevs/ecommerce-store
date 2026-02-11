@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import ItemEditModal from './ItemEditModal';
+import SpecialRequestEditModal from './SpecialRequestEditModal';
 import FilePreviewModal from '../common/FilePreviewModal';
 
 // Component to display Custom Request details
@@ -23,7 +24,7 @@ function CustomRequestDetails({ data, onPreviewFile }) {
       {data.eventDate && (
         <div>
           <span className="text-xs text-gray-500 uppercase">Event Date</span>
-          <p className="text-gray-700">{new Date(data.eventDate).toLocaleDateString()}</p>
+          <p className="text-gray-700">{new Date(data.eventDate).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' })}</p>
         </div>
       )}
 
@@ -181,7 +182,7 @@ function MetaAdsDetails({ data }) {
           {data.budgetTimeline.startDate && (
             <div>
               <span className="text-xs text-gray-500 uppercase">Start Date</span>
-              <p className="text-gray-700">{new Date(data.budgetTimeline.startDate).toLocaleDateString()}</p>
+              <p className="text-gray-700">{new Date(data.budgetTimeline.startDate).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' })}</p>
             </div>
           )}
         </div>
@@ -252,6 +253,7 @@ export default function OrderItemEditor({ items, onUpdate, saving }) {
   const [editedItems, setEditedItems] = useState(items || []);
   const [hasChanges, setHasChanges] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [editingSpecialItem, setEditingSpecialItem] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
 
   const handleRemoveItem = (index) => {
@@ -271,6 +273,14 @@ export default function OrderItemEditor({ items, onUpdate, saving }) {
     setEditedItems(updated);
     setHasChanges(true);
     setEditingItem(null);
+  };
+
+  const handleSaveSpecialItem = (updatedItem) => {
+    const updated = [...editedItems];
+    updated[editingSpecialItem.index] = updatedItem;
+    setEditedItems(updated);
+    setHasChanges(true);
+    setEditingSpecialItem(null);
   };
 
   const handleSave = () => {
@@ -363,6 +373,15 @@ export default function OrderItemEditor({ items, onUpdate, saving }) {
                       </span>
                     </div>
                   </div>
+                  <button
+                    onClick={() => setEditingSpecialItem({ index, item: editedItems[index] })}
+                    className="p-1.5 text-gray-400 hover:text-academica-blue hover:bg-blue-50 rounded transition-colors"
+                    title="Edit item"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
                   <button
                     onClick={() => handleRemoveItem(index)}
                     className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
@@ -467,6 +486,16 @@ export default function OrderItemEditor({ items, onUpdate, saving }) {
           item={editingItem.item}
           onSave={handleSaveItem}
           onClose={() => setEditingItem(null)}
+          saving={saving}
+        />
+      )}
+
+      {/* Special Request Edit Modal */}
+      {editingSpecialItem && (
+        <SpecialRequestEditModal
+          item={editingSpecialItem.item}
+          onSave={handleSaveSpecialItem}
+          onClose={() => setEditingSpecialItem(null)}
           saving={saving}
         />
       )}
