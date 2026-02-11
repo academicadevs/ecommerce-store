@@ -4,6 +4,8 @@ import OrderItemEditor from './OrderItemEditor';
 import CommunicationFeed from './CommunicationFeed';
 import EmailComposer from './EmailComposer';
 import ProofManager from './ProofManager';
+import UserDropdown from '../UserDropdown';
+import InlineUserCreateForm from './InlineUserCreateForm';
 import { adminAPI } from '../../services/api';
 import usePolling from '../../hooks/usePolling';
 
@@ -51,6 +53,8 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
   const [editingCustomerInfo, setEditingCustomerInfo] = useState(false);
   const [customerInfoDraft, setCustomerInfoDraft] = useState({});
   const [savingCustomerInfo, setSavingCustomerInfo] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [showCreateUserForm, setShowCreateUserForm] = useState(false);
 
   const orderStatusRef = useRef(order?.status);
   const orderAssignedRef = useRef(order?.assignedTo);
@@ -264,14 +268,37 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
       phone: info.phone || '',
       department: info.department || '',
     });
+    setSelectedUserId(null);
+    setShowCreateUserForm(false);
     setEditingCustomerInfo(true);
+  };
+
+  const handleUserSelected = (userId, userData) => {
+    setSelectedUserId(userId);
+    setShowCreateUserForm(false);
+    setCustomerInfoDraft(prev => ({
+      ...prev,
+      contactName: userData.contactName || prev.contactName,
+      email: userData.email || prev.email,
+      phone: userData.phone || prev.phone,
+      schoolName: userData.schoolName || prev.schoolName,
+      principalName: userData.principalName || prev.principalName,
+      positionTitle: userData.positionTitle || prev.positionTitle,
+      department: userData.department || prev.department,
+    }));
+  };
+
+  const handleUserCreated = (createdUser) => {
+    handleUserSelected(createdUser.id, createdUser);
   };
 
   const handleSaveCustomerInfo = async () => {
     setSavingCustomerInfo(true);
     try {
-      await adminAPI.updateShippingInfo(order.id, customerInfoDraft);
+      await adminAPI.updateShippingInfo(order.id, customerInfoDraft, selectedUserId);
       setEditingCustomerInfo(false);
+      setSelectedUserId(null);
+      setShowCreateUserForm(false);
       onUpdate();
     } catch (error) {
       console.error('Failed to update customer info:', error);
@@ -284,6 +311,8 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
   const handleCancelCustomerEdit = () => {
     setEditingCustomerInfo(false);
     setCustomerInfoDraft({});
+    setSelectedUserId(null);
+    setShowCreateUserForm(false);
   };
 
   if (!order) return null;
@@ -382,6 +411,34 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                 {editingCustomerInfo ? (
                   <>
+                    {/* Link to Registered User Section */}
+                    <div className="mb-3 pb-3 border-b border-gray-200">
+                      <label className="text-xs text-gray-500 uppercase tracking-wide mb-2 block">Link to Registered User</label>
+                      {showCreateUserForm ? (
+                        <InlineUserCreateForm
+                          onCreated={handleUserCreated}
+                          onCancel={() => setShowCreateUserForm(false)}
+                          defaultEmail={customerInfoDraft.email}
+                        />
+                      ) : (
+                        <UserDropdown
+                          value={selectedUserId}
+                          onChange={handleUserSelected}
+                          onClear={() => setSelectedUserId(null)}
+                          onCreateNew={() => setShowCreateUserForm(true)}
+                          disabled={savingCustomerInfo}
+                        />
+                      )}
+                      {selectedUserId && !showCreateUserForm && (
+                        <div className="mt-2 text-xs text-green-600 flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          User selected — fields populated below
+                        </div>
+                      )}
+                    </div>
+
                     {order.shippingInfo?.isInternalOrder ? (
                       <>
                         <div className="grid grid-cols-2 gap-3">

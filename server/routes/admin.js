@@ -507,10 +507,19 @@ router.put('/orders/:id/cc-emails', (req, res) => {
 // Update shipping info (customer information)
 router.put('/orders/:id/shipping-info', (req, res) => {
   try {
-    const { shippingInfo } = req.body;
+    const { shippingInfo, userId } = req.body;
 
     if (!shippingInfo || typeof shippingInfo !== 'object') {
       return res.status(400).json({ error: 'shippingInfo must be an object' });
+    }
+
+    // If userId is provided, validate the user exists and update the order's user link
+    if (userId) {
+      const linkedUser = User.findById(userId);
+      if (!linkedUser) {
+        return res.status(400).json({ error: 'Selected user not found' });
+      }
+      Order.updateUserId(req.params.id, userId);
     }
 
     const order = Order.updateShippingInfo(req.params.id, shippingInfo);

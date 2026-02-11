@@ -168,6 +168,12 @@ export const Order = {
     return Order.findById(id);
   },
 
+  updateUserId: (id, userId) => {
+    const stmt = db.prepare('UPDATE orders SET userId = ? WHERE id = ?');
+    stmt.run(userId, id);
+    return Order.findById(id);
+  },
+
   updateAdditionalEmails: (id, additionalEmails) => {
     const order = Order.findById(id);
     if (!order) return null;

@@ -99,7 +99,11 @@ export const adminAPI = {
   // Orders
   getOrders: (filter) => api.get('/admin/orders', { params: { filter } }),
   getOrder: (id) => api.get(`/admin/orders/${id}`),
-  updateShippingInfo: (id, shippingInfo) => api.put(`/admin/orders/${id}/shipping-info`, { shippingInfo }),
+  updateShippingInfo: (id, shippingInfo, userId) => {
+    const body = { shippingInfo };
+    if (userId !== undefined) body.userId = userId;
+    return api.put(`/admin/orders/${id}/shipping-info`, body);
+  },
   updateOrderStatus: (id, status) => api.put(`/admin/orders/${id}`, { status }),
   assignOrder: (id, adminId) => api.put(`/admin/orders/${id}/assign`, { adminId }),
   getOrderNotes: (id) => api.get(`/admin/orders/${id}/notes`),

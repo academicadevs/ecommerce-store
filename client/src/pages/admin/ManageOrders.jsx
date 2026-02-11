@@ -133,9 +133,18 @@ export default function ManageOrders() {
     loadUnreadCounts(); // Refresh counts after closing modal
   };
 
-  const handleOrderUpdate = () => {
+  const handleOrderUpdate = async () => {
     loadOrders();
     loadUnreadCounts();
+    // Refresh selectedOrder so the modal reflects the latest data
+    if (selectedOrder) {
+      try {
+        const res = await adminAPI.getOrder(selectedOrder.id);
+        setSelectedOrder(res.data.order);
+      } catch (error) {
+        console.error('Failed to refresh selected order:', error);
+      }
+    }
   };
 
   // Check if viewing a specific admin's orders (not 'all', 'mine', or 'unassigned')
