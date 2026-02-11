@@ -86,7 +86,13 @@ export default function ProofManager({ orderId, orderNumber, proofs, ccEmails = 
   };
 
   const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
+    // SQLite CURRENT_TIMESTAMP stores UTC without 'Z' suffix — append it so
+    // JavaScript parses the value as UTC rather than local time.
+    let normalized = dateStr;
+    if (normalized && !normalized.endsWith('Z') && !normalized.includes('+')) {
+      normalized = normalized.replace(' ', 'T') + 'Z';
+    }
+    return new Date(normalized).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',

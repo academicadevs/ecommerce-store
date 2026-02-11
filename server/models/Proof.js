@@ -84,12 +84,14 @@ export class Proof {
     // Generate human-readable access token
     const accessToken = this.generateAccessToken(orderId, title, version);
 
+    const now = new Date().toISOString();
+
     const stmt = db.prepare(`
-      INSERT INTO proofs (id, orderId, orderItemId, version, title, fileUrl, fileType, accessToken, expiresAt, createdBy)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO proofs (id, orderId, orderItemId, version, title, fileUrl, fileType, accessToken, expiresAt, createdBy, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    stmt.run(id, orderId, orderItemId || null, version, title, fileUrl, fileType, accessToken, expiresAt.toISOString(), createdBy);
+    stmt.run(id, orderId, orderItemId || null, version, title, fileUrl, fileType, accessToken, expiresAt.toISOString(), createdBy, now);
 
     return this.findById(id);
   }
@@ -193,13 +195,14 @@ export class ProofAnnotation {
 
   static create({ proofId, type, x, y, width, height, page, comment, authorName, authorEmail }) {
     const id = this.generateId();
+    const now = new Date().toISOString();
 
     const stmt = db.prepare(`
-      INSERT INTO proof_annotations (id, proofId, type, x, y, width, height, page, comment, authorName, authorEmail)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO proof_annotations (id, proofId, type, x, y, width, height, page, comment, authorName, authorEmail, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    stmt.run(id, proofId, type, x, y, width || null, height || null, page || 1, comment, authorName, authorEmail || null);
+    stmt.run(id, proofId, type, x, y, width || null, height || null, page || 1, comment, authorName, authorEmail || null, now);
 
     return this.findById(id);
   }
