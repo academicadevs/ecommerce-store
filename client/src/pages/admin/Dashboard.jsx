@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import usePolling from '../../hooks/usePolling';
 import { formatDateOnlyPT } from '../../utils/dateFormat';
@@ -29,25 +30,31 @@ const statusBadgeClass = {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const { isSuperAdmin } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
   const [totalUnread, setTotalUnread] = useState({ messages: 0, feedback: 0 });
+  const [recentActivity, setRecentActivity] = useState([]);
 
   useEffect(() => {
     loadStats();
     loadNotifications();
+    if (isSuperAdmin) loadRecentActivity();
   }, []);
 
   // Poll every 30s
   usePolling(async () => {
-    const [statsRes, notifsRes] = await Promise.all([
+    const promises = [
       adminAPI.getStats(),
       adminAPI.getRecentNotifications(),
-    ]);
-    setStats(statsRes.data.stats);
-    setNotifications(notifsRes.data.notifications || []);
-    setTotalUnread(notifsRes.data.totalUnread || { messages: 0, feedback: 0 });
+    ];
+    if (isSuperAdmin) promises.push(adminAPI.getAuditLogRecent(8));
+    const results = await Promise.all(promises);
+    setStats(results[0].data.stats);
+    setNotifications(results[1].data.notifications || []);
+    setTotalUnread(results[1].data.totalUnread || { messages: 0, feedback: 0 });
+    if (isSuperAdmin && results[2]) setRecentActivity(results[2].data.entries || []);
   }, 30000, true);
 
   const loadStats = async () => {
@@ -58,6 +65,15 @@ export default function AdminDashboard() {
       console.error('Failed to load stats:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadRecentActivity = async () => {
+    try {
+      const response = await adminAPI.getAuditLogRecent(8);
+      setRecentActivity(response.data.entries || []);
+    } catch (error) {
+      console.error('Failed to load recent activity:', error);
     }
   };
 
@@ -172,66 +188,83 @@ export default function AdminDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid sm:grid-cols-4 gap-6 mb-8">
+      <div className={`grid gap-4 mb-8 ${isSuperAdmin ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
         <Link
           to="/admin/products"
-          className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow flex items-center gap-4"
+          className="bg-white rounded-lg shadow-sm px-4 py-3 hover:shadow-md transition-shadow flex items-center gap-3"
         >
-          <div className="bg-blue-100 text-blue-600 p-3 rounded-lg">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-blue-100 text-blue-600 p-2 rounded-lg flex-shrink-0">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
           </div>
-          <div>
-            <p className="font-semibold text-gray-900">Manage Products</p>
-            <p className="text-sm text-gray-500">Add, edit, or remove products</p>
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-900 text-sm">Products</p>
+            <p className="text-xs text-gray-500 truncate">Add, edit, or remove</p>
           </div>
         </Link>
 
         <Link
           to="/admin/orders"
-          className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow flex items-center gap-4"
+          className="bg-white rounded-lg shadow-sm px-4 py-3 hover:shadow-md transition-shadow flex items-center gap-3"
         >
-          <div className="bg-green-100 text-green-600 p-3 rounded-lg">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-green-100 text-green-600 p-2 rounded-lg flex-shrink-0">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           </div>
-          <div>
-            <p className="font-semibold text-gray-900">View Requests</p>
-            <p className="text-sm text-gray-500">Process and track requests</p>
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-900 text-sm">Requests</p>
+            <p className="text-xs text-gray-500 truncate">Process and track</p>
           </div>
         </Link>
 
         <Link
           to="/admin/users"
-          className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow flex items-center gap-4"
+          className="bg-white rounded-lg shadow-sm px-4 py-3 hover:shadow-md transition-shadow flex items-center gap-3"
         >
-          <div className="bg-purple-100 text-purple-600 p-3 rounded-lg">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-purple-100 text-purple-600 p-2 rounded-lg flex-shrink-0">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
             </svg>
           </div>
-          <div>
-            <p className="font-semibold text-gray-900">Manage Users</p>
-            <p className="text-sm text-gray-500">View and manage user accounts</p>
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-900 text-sm">Users</p>
+            <p className="text-xs text-gray-500 truncate">Manage accounts</p>
           </div>
         </Link>
 
         <Link
           to="/admin/reports"
-          className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow flex items-center gap-4"
+          className="bg-white rounded-lg shadow-sm px-4 py-3 hover:shadow-md transition-shadow flex items-center gap-3"
         >
-          <div className="bg-orange-100 text-orange-600 p-3 rounded-lg">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-orange-100 text-orange-600 p-2 rounded-lg flex-shrink-0">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          <div>
-            <p className="font-semibold text-gray-900">Reports & Analytics</p>
-            <p className="text-sm text-gray-500">View performance metrics</p>
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-900 text-sm">Reports</p>
+            <p className="text-xs text-gray-500 truncate">Performance metrics</p>
           </div>
         </Link>
+
+        {isSuperAdmin && (
+          <Link
+            to="/admin/audit-log"
+            className="bg-white rounded-lg shadow-sm px-4 py-3 hover:shadow-md transition-shadow flex items-center gap-3"
+          >
+            <div className="bg-indigo-100 text-indigo-600 p-2 rounded-lg flex-shrink-0">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-900 text-sm">Audit Log</p>
+              <p className="text-xs text-gray-500 truncate">Platform activity</p>
+            </div>
+          </Link>
+        )}
       </div>
 
       {/* Notifications Panel */}
@@ -300,65 +333,109 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Recent Requests */}
-      <div className="bg-white rounded-lg shadow-sm">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Requests</h2>
-          <Link to="/admin/orders" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-            View All →
-          </Link>
-        </div>
-        <div className="overflow-x-auto">
-          {stats?.recentOrders?.length > 0 ? (
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Request ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    School
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {stats.recentOrders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => navigate('/admin/orders')}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="font-mono text-sm">{order.orderNumber || `#${order.id.slice(0, 8).toUpperCase()}`}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900">{order.schoolName}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`badge ${statusBadgeClass[order.status] || 'badge-info'}`}>
-                        {statusLabels[order.status] || order.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-500">
-                        {formatDateOnlyPT(order.createdAt)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="px-6 py-8 text-center text-gray-500">
-              No requests yet
+      {/* Recent Activity + Recent Requests side by side */}
+      <div className={`grid gap-6 ${isSuperAdmin ? 'lg:grid-cols-2' : ''}`}>
+        {/* Recent Activity (Superadmin only) */}
+        {isSuperAdmin && (
+          <div className="bg-white rounded-lg shadow-sm self-start">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Recent Activity
+              </h2>
+              <Link to="/admin/audit-log" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
+                View All
+              </Link>
             </div>
-          )}
+            <div className="divide-y divide-gray-100">
+              {recentActivity.length > 0 ? recentActivity.map((entry) => (
+                <div key={entry.id} className="px-6 py-3 flex items-center gap-3">
+                  <div className={`flex-shrink-0 w-2 h-2 rounded-full ${
+                    entry.category === 'orders' ? 'bg-blue-500' :
+                    entry.category === 'users' ? 'bg-green-500' :
+                    entry.category === 'auth' ? 'bg-yellow-500' :
+                    entry.category === 'proofs' ? 'bg-purple-500' :
+                    entry.category === 'communications' ? 'bg-teal-500' :
+                    entry.category === 'products' ? 'bg-orange-500' : 'bg-gray-400'
+                  }`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-900 truncate">
+                      <span className="font-medium">{entry.actorName || entry.actorEmail || 'System'}</span>
+                      {' '}
+                      <span className="text-gray-500">{entry.action.replace(/[._]/g, ' ')}</span>
+                    </p>
+                  </div>
+                  <span className="text-xs text-gray-400 whitespace-nowrap">{formatTimeAgo(entry.createdAt)}</span>
+                </div>
+              )) : (
+                <div className="px-6 py-8 text-center text-gray-500">No activity yet</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Requests */}
+        <div className="bg-white rounded-lg shadow-sm self-start">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-gray-900">Recent Requests</h2>
+            <Link to="/admin/orders" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
+              View All →
+            </Link>
+          </div>
+          <div className="overflow-x-auto">
+            {stats?.recentOrders?.length > 0 ? (
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Request ID
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      School
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {stats.recentOrders.map((order) => (
+                    <tr
+                      key={order.id}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => navigate('/admin/orders')}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="font-mono text-sm">{order.orderNumber || `#${order.id.slice(0, 8).toUpperCase()}`}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-900">{order.schoolName}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`badge ${statusBadgeClass[order.status] || 'badge-info'}`}>
+                          {statusLabels[order.status] || order.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-500">
+                          {formatDateOnlyPT(order.createdAt)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="px-6 py-8 text-center text-gray-500">
+                No requests yet
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -9,6 +9,7 @@ import { Order } from '../models/Order.js';
 import { OrderCommunication } from '../models/OrderCommunication.js';
 import { sendOrderEmail } from '../utils/sendgrid.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
+import { logAudit } from '../utils/auditLog.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -157,6 +158,7 @@ AcademicaMart Team`;
       }
     }
 
+    logAudit(req, { action: 'proof.upload', category: 'proofs', targetId: proof.id, targetType: 'proof', details: { orderId, title: proof.title, version: proof.version, orderNumber: order.orderNumber, contactName: order.shippingInfo?.contactName, emailSent: sendEmail === 'true' || sendEmail === true } });
     res.json({ proof });
   } catch (error) {
     console.error('Error uploading proof:', error);
@@ -179,6 +181,8 @@ router.delete('/:proofId', authenticate, requireAdmin, (req, res) => {
     }
 
     Proof.delete(req.params.proofId);
+    const delOrder = Order.findById(proof.orderId);
+    logAudit(req, { action: 'proof.delete', category: 'proofs', targetId: req.params.proofId, targetType: 'proof', details: { orderId: proof.orderId, title: proof.title, version: proof.version, orderNumber: delOrder?.orderNumber } });
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting proof:', error);
@@ -190,6 +194,7 @@ router.delete('/:proofId', authenticate, requireAdmin, (req, res) => {
 router.post('/annotations/:annotationId/resolve', authenticate, requireAdmin, (req, res) => {
   try {
     const annotation = ProofAnnotation.resolve(req.params.annotationId, req.user.contactName || req.user.email);
+    logAudit(req, { action: 'proof.annotation_resolve', category: 'proofs', targetId: req.params.annotationId, targetType: 'annotation', details: { resolvedBy: req.user.contactName || req.user.email, comment: annotation?.comment?.substring(0, 100) } });
     res.json({ annotation });
   } catch (error) {
     console.error('Error resolving annotation:', error);
@@ -270,6 +275,8 @@ router.post('/review/:accessToken/annotate', (req, res) => {
       Proof.updateStatus(proof.id, 'feedback_received');
     }
 
+    const annotOrder = Order.findById(proof.orderId);
+    logAudit(req, { action: 'proof.annotate', category: 'proofs', targetId: proof.id, targetType: 'proof', details: { authorName, type, comment: comment?.substring(0, 100), proofTitle: proof.title, version: proof.version, orderNumber: annotOrder?.orderNumber } });
     res.json({ annotation });
   } catch (error) {
     console.error('Error adding annotation:', error);

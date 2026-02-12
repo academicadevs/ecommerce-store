@@ -31,3 +31,10 @@ export const requireAdmin = (req, res, next) => {
   }
   next();
 };
+
+export const requireSuperAdmin = (req, res, next) => {
+  if (req.user?.userType !== 'superadmin') {
+    return res.status(403).json({ error: 'Superadmin access required' });
+  }
+  next();
+};

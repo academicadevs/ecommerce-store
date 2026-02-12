@@ -71,6 +71,7 @@ export function AuthProvider({ children }) {
     updateProfile,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
+    isSuperAdmin: user?.userType === 'superadmin',
   };
 
   return (

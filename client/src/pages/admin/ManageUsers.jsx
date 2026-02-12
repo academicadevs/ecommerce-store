@@ -37,6 +37,7 @@ const USER_TYPE_LABELS = {
   academica_employee: 'Academica Employee',
   admin: 'Admin',
   superadmin: 'Super Admin',
+  guest: 'Quick Added',
 };
 
 const USER_TYPE_COLORS = {
@@ -44,6 +45,7 @@ const USER_TYPE_COLORS = {
   academica_employee: 'bg-blue-100 text-blue-800 border-blue-200',
   admin: 'bg-purple-100 text-purple-800 border-purple-200',
   superadmin: 'bg-red-100 text-red-800 border-red-200',
+  guest: 'bg-orange-100 text-orange-800 border-orange-200',
 };
 
 export default function ManageUsers() {
@@ -462,6 +464,7 @@ export default function ManageUsers() {
                           user.userType === 'admin' || user.userType === 'superadmin' ? 'bg-purple-50 text-purple-700 border-purple-200' : ''
                         }`}
                       >
+                        <option value="guest">Quick Added</option>
                         <option value="school_staff">School Staff Member</option>
                         <option value="academica_employee">Academica Employee</option>
                         <option value="admin">Admin</option>
@@ -625,6 +628,7 @@ export default function ManageUsers() {
                   onChange={(e) => setNewUser({ ...newUser, userType: e.target.value })}
                   className="input w-full"
                 >
+                  <option value="guest">Quick Added</option>
                   <option value="school_staff">School Staff Member</option>
                   <option value="academica_employee">Academica Employee</option>
                   {isSuperAdmin && <option value="admin">Admin</option>}

@@ -158,6 +158,10 @@ export const adminAPI = {
   toggleOfficeActive: (id) => api.put(`/admin/offices/${id}/toggle-active`),
   deleteOffice: (id) => api.delete(`/admin/offices/${id}`),
   getOfficeUsers: (id) => api.get(`/admin/offices/${id}/users`),
+  // Audit Log
+  getAuditLog: (params) => api.get('/admin/audit-log', { params }),
+  getAuditLogRecent: (limit) => api.get('/admin/audit-log/recent', { params: { limit } }),
+  getAuditLogFilters: () => api.get('/admin/audit-log/filters'),
 };
 
 // Schools API (public endpoint for active schools)

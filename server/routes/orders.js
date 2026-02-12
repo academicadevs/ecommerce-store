@@ -10,6 +10,7 @@ import { Cart } from '../models/Cart.js';
 import { User } from '../models/User.js';
 import { authenticate } from '../middleware/auth.js';
 import { sendOrderConfirmationEmail } from '../utils/email.js';
+import { logAudit } from '../utils/auditLog.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -138,6 +139,8 @@ router.post('/guest', async (req, res) => {
       order
     });
 
+    logAudit({ user: guestUser, ip: req.ip, connection: req.connection }, { action: 'order.guest_create', category: 'orders', targetId: order.id, targetType: 'order', details: { contactName: guestInfo.contactName, email: guestInfo.email, schoolName: guestInfo.schoolName, projectTitle: customRequestData?.projectTitle, orderNumber: order.orderNumber } });
+
     // Send confirmation email (fire-and-forget so response isn't blocked)
     sendOrderConfirmationEmail(order, guestUser).catch(emailError => {
       console.error('Failed to send guest order email:', emailError);
@@ -230,6 +233,8 @@ router.post('/', async (req, res) => {
       message: 'Request submitted successfully',
       order
     });
+
+    logAudit(req, { action: 'order.create', category: 'orders', targetId: order.id, targetType: 'order', details: { total, itemCount: orderItems.length, isSpecialRequest, orderNumber: order.orderNumber, contactName: shippingInfo.contactName, email: shippingInfo.email, itemNames: orderItems.map(i => i.name).filter(Boolean).join(', ') } });
 
     // Send confirmation emails (fire-and-forget so response isn't blocked)
     sendOrderConfirmationEmail(order, req.user).catch(emailError => {

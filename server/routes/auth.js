@@ -2,6 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
 import { authenticate } from '../middleware/auth.js';
+import { logAudit } from '../utils/auditLog.js';
 
 const router = express.Router();
 
@@ -79,6 +80,8 @@ router.post('/register', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    logAudit(req, { action: 'auth.register', category: 'auth', targetId: user.id, targetType: 'user', details: { email, userType, contactName, schoolName, department, positionTitle } });
+
     res.status(201).json({
       message: 'Registration successful',
       token,
@@ -133,6 +136,8 @@ router.post('/login', async (req, res) => {
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
     );
+
+    logAudit({ user, ip: req.ip, connection: req.connection }, { action: 'auth.login', category: 'auth', targetId: user.id, targetType: 'user', details: { email, contactName: user.contactName, userType: user.userType } });
 
     res.json({
       message: 'Login successful',

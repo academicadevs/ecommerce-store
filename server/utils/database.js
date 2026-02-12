@@ -461,6 +461,26 @@ export function initializeDatabase() {
     console.error('Error syncing product overviews:', e.message);
   }
 
+  // Audit log table for superadmin activity tracking
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id TEXT PRIMARY KEY,
+      action TEXT NOT NULL,
+      category TEXT NOT NULL,
+      userId TEXT,
+      targetId TEXT,
+      targetType TEXT,
+      details TEXT,
+      ipAddress TEXT,
+      createdAt TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_category ON audit_logs(category);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_userId ON audit_logs(userId);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_createdAt ON audit_logs(createdAt);
+  `);
+
   console.log('Database initialized successfully');
 }
 

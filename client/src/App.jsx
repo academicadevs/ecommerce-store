@@ -28,6 +28,7 @@ import ManageProducts from './pages/admin/ManageProducts';
 import ManageOrders from './pages/admin/ManageOrders';
 import ManageUsers from './pages/admin/ManageUsers';
 import Reports from './pages/admin/Reports';
+import AuditLog from './pages/admin/AuditLog';
 
 // Protected Route Component
 function ProtectedRoute({ children, adminOnly = false }) {
@@ -98,6 +99,7 @@ export default function App() {
               <Route path="/admin/orders" element={<ProtectedRoute adminOnly><ManageOrders /></ProtectedRoute>} />
               <Route path="/admin/users" element={<ProtectedRoute adminOnly><ManageUsers /></ProtectedRoute>} />
               <Route path="/admin/reports" element={<ProtectedRoute adminOnly><Reports /></ProtectedRoute>} />
+              <Route path="/admin/audit-log" element={<ProtectedRoute adminOnly><AuditLog /></ProtectedRoute>} />
 
               {/* 404 */}
               <Route path="*" element={<Navigate to="/" replace />} />

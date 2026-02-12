@@ -6,6 +6,7 @@ const USER_TYPE_LABELS = {
   academica_employee: 'Academica',
   admin: 'Admin',
   superadmin: 'Super Admin',
+  guest: 'Quick Added',
 };
 
 const USER_TYPE_COLORS = {
@@ -13,6 +14,7 @@ const USER_TYPE_COLORS = {
   academica_employee: 'bg-blue-100 text-blue-700',
   admin: 'bg-purple-100 text-purple-700',
   superadmin: 'bg-red-100 text-red-700',
+  guest: 'bg-orange-100 text-orange-700',
 };
 
 export default function UserDropdown({

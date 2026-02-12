@@ -22,7 +22,8 @@ const userTypeLabels = {
   school_staff: 'School Staff',
   academica_employee: 'Academica Employee',
   superadmin: 'Super Admin',
-  admin: 'Admin'
+  admin: 'Admin',
+  guest: 'Quick Added'
 };
 
 const USER_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b'];

@@ -12,9 +12,11 @@ import { Proof, ProofAnnotation } from '../models/Proof.js';
 import { User } from '../models/User.js';
 import { School } from '../models/School.js';
 import { Office } from '../models/Office.js';
-import { authenticate, requireAdmin } from '../middleware/auth.js';
+import { authenticate, requireAdmin, requireSuperAdmin } from '../middleware/auth.js';
 import { seedAll } from '../scripts/seedAll.js';
 import { sendOrderEmail } from '../utils/sendgrid.js';
+import { AuditLog } from '../models/AuditLog.js';
+import { logAudit } from '../utils/auditLog.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -178,6 +180,8 @@ router.post('/notifications/mark-read/:orderId', (req, res) => {
     OrderCommunication.markAsRead(orderId);
     ProofAnnotation.markAsReadByOrder(orderId);
 
+    const cmOrder = Order.findById(orderId);
+    logAudit(req, { action: 'order.comms_mark_read', category: 'communications', targetId: orderId, targetType: 'order', details: { orderNumber: cmOrder?.orderNumber, contactName: cmOrder?.shippingInfo?.contactName } });
     res.json({ message: 'Notifications marked as read' });
   } catch (error) {
     console.error('Error marking notifications as read:', error);
@@ -232,6 +236,7 @@ router.post('/products', (req, res) => {
       features,
       inStock
     });
+    logAudit(req, { action: 'product.create', category: 'products', targetId: product.id, targetType: 'product', details: { name, category, subcategory, inStock } });
     res.status(201).json({ message: 'Product created', product });
   } catch (error) {
     console.error('Error creating product:', error);
@@ -262,6 +267,15 @@ router.put('/products/:id', (req, res) => {
       inStock: inStock !== undefined ? inStock : existing.inStock
     });
 
+    // Compute before/after diff for simple product fields
+    const productFields = { name, description, category, subcategory, inStock };
+    const productChanges = [];
+    for (const [key, newVal] of Object.entries(productFields)) {
+      if (newVal !== undefined && newVal !== existing[key]) {
+        productChanges.push({ field: key, from: existing[key] ?? '', to: newVal ?? '' });
+      }
+    }
+    logAudit(req, { action: 'product.update', category: 'products', targetId: req.params.id, targetType: 'product', details: { name: name || existing.name, category: category || existing.category, changes: productChanges } });
     res.json({ message: 'Product updated', product });
   } catch (error) {
     console.error('Error updating product:', error);
@@ -277,6 +291,7 @@ router.delete('/products/:id', (req, res) => {
     }
 
     Product.delete(req.params.id);
+    logAudit(req, { action: 'product.delete', category: 'products', targetId: req.params.id, targetType: 'product', details: { name: existing.name, category: existing.category } });
     res.json({ message: 'Product deleted' });
   } catch (error) {
     console.error('Error deleting product:', error);
@@ -443,11 +458,15 @@ router.put('/orders/:id', (req, res) => {
       return res.status(400).json({ error: 'Invalid status' });
     }
 
+    const existingOrder = Order.findById(req.params.id);
+    const previousStatus = existingOrder?.status;
+
     const order = Order.updateStatus(req.params.id, status);
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
+    logAudit(req, { action: 'order.status_change', category: 'orders', targetId: req.params.id, targetType: 'order', details: { status, previousStatus, orderNumber: order.orderNumber, contactName: order.shippingInfo?.contactName } });
     res.json({ message: 'Order updated', order });
   } catch (error) {
     console.error('Error updating order:', error);
@@ -473,6 +492,8 @@ router.put('/orders/:id/assign', (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
+    const assignedAdmin = adminId ? User.findById(adminId) : null;
+    logAudit(req, { action: 'order.assign', category: 'orders', targetId: req.params.id, targetType: 'order', details: { adminId: adminId || 'unassigned', adminName: assignedAdmin?.contactName || (adminId ? undefined : 'unassigned'), orderNumber: order.orderNumber, contactName: order.shippingInfo?.contactName } });
     res.json({ message: 'Order assigned', order });
   } catch (error) {
     console.error('Error assigning order:', error);
@@ -498,6 +519,7 @@ router.put('/orders/:id/cc-emails', (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
+    logAudit(req, { action: 'order.emails_update', category: 'orders', targetId: req.params.id, targetType: 'order', details: { emailCount: validEmails.length, emails: validEmails.join(', '), orderNumber: order.orderNumber } });
     res.json({ message: 'CC emails updated', order });
   } catch (error) {
     console.error('Error updating CC emails:', error);
@@ -523,11 +545,22 @@ router.put('/orders/:id/shipping-info', (req, res) => {
       Order.updateUserId(req.params.id, userId);
     }
 
+    const oldOrder = Order.findById(req.params.id);
+    const oldShipping = oldOrder?.shippingInfo || {};
     const order = Order.updateShippingInfo(req.params.id, shippingInfo);
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
+    // Compute before/after diff for shipping fields
+    const shippingFields = ['contactName', 'email', 'phone', 'schoolName'];
+    const shippingChanges = [];
+    for (const key of shippingFields) {
+      if (shippingInfo[key] !== undefined && shippingInfo[key] !== oldShipping[key]) {
+        shippingChanges.push({ field: key, from: oldShipping[key] || '', to: shippingInfo[key] || '' });
+      }
+    }
+    logAudit(req, { action: 'order.shipping_update', category: 'orders', targetId: req.params.id, targetType: 'order', details: { orderNumber: order.orderNumber, contactName: shippingInfo.contactName, changes: shippingChanges } });
     res.json({ message: 'Shipping info updated', order });
   } catch (error) {
     console.error('Error updating shipping info:', error);
@@ -555,6 +588,8 @@ router.post('/orders/:id/notes', (req, res) => {
     }
 
     const newNote = Order.addNote(req.params.id, req.user.id, note.trim());
+    const noteOrder = Order.findById(req.params.id);
+    logAudit(req, { action: 'order.note_add', category: 'orders', targetId: req.params.id, targetType: 'order', details: { orderNumber: noteOrder?.orderNumber, notePreview: note.trim().substring(0, 100) } });
     res.status(201).json({ message: 'Note added', note: newNote });
   } catch (error) {
     console.error('Error adding note:', error);
@@ -565,6 +600,7 @@ router.post('/orders/:id/notes', (req, res) => {
 router.delete('/orders/notes/:noteId', (req, res) => {
   try {
     Order.deleteNote(req.params.noteId);
+    logAudit(req, { action: 'order.note_delete', category: 'orders', targetId: req.params.noteId, targetType: 'order_note', details: { noteId: req.params.noteId } });
     res.json({ message: 'Note deleted' });
   } catch (error) {
     console.error('Error deleting note:', error);
@@ -586,7 +622,9 @@ router.put('/orders/:id/items', (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
+    const oldItems = order.items || [];
     const updatedOrder = Order.updateItems(req.params.id, items);
+    logAudit(req, { action: 'order.items_update', category: 'orders', targetId: req.params.id, targetType: 'order', details: { itemCount: items.length, previousItemCount: oldItems.length, orderNumber: order.orderNumber, itemNames: items.map(i => i.name).filter(Boolean).join(', '), previousItemNames: oldItems.map(i => i.name).filter(Boolean).join(', ') } });
     res.json({ message: 'Order items updated', order: updatedOrder });
   } catch (error) {
     console.error('Error updating order items:', error);
@@ -676,6 +714,7 @@ router.post('/orders/:id/email', upload.array('attachments', 10), async (req, re
       messageId: emailResult.messageId
     });
 
+    logAudit(req, { action: 'order.email_send', category: 'communications', targetId: req.params.id, targetType: 'order', details: { subject, to: customerEmail, orderNumber: order.orderNumber, contactName: order.shippingInfo?.contactName, hasAttachments: attachments.length > 0, attachmentCount: attachments.length || undefined } });
     res.json({ message: 'Email sent', communication });
   } catch (error) {
     console.error('Error sending email:', error);
@@ -738,7 +777,10 @@ router.put('/users/:id/role', (req, res) => {
       return res.status(400).json({ error: 'Valid role is required' });
     }
 
+    const roleUser = User.findById(req.params.id);
+    const previousRole = roleUser?.role;
     User.updateRole(req.params.id, role);
+    logAudit(req, { action: 'user.role_change', category: 'users', targetId: req.params.id, targetType: 'user', details: { role, previousRole, contactName: roleUser?.contactName, email: roleUser?.email } });
     res.json({ message: 'User role updated' });
   } catch (error) {
     console.error('Error updating user role:', error);
@@ -755,9 +797,12 @@ router.put('/users/:id/userType', (req, res) => {
       return res.status(403).json({ error: 'Only super admins can change user types' });
     }
 
-    if (!userType || !['school_staff', 'academica_employee', 'admin', 'superadmin'].includes(userType)) {
+    if (!userType || !['school_staff', 'academica_employee', 'admin', 'superadmin', 'guest'].includes(userType)) {
       return res.status(400).json({ error: 'Valid user type is required' });
     }
+
+    const typeUser = User.findById(req.params.id);
+    const previousType = typeUser?.userType;
 
     User.updateUserType(req.params.id, userType);
 
@@ -765,6 +810,7 @@ router.put('/users/:id/userType', (req, res) => {
     const newRole = (userType === 'admin' || userType === 'superadmin') ? 'admin' : 'user';
     User.updateRole(req.params.id, newRole);
 
+    logAudit(req, { action: 'user.type_change', category: 'users', targetId: req.params.id, targetType: 'user', details: { userType, previousType, contactName: typeUser?.contactName, email: typeUser?.email } });
     res.json({ message: 'User type updated' });
   } catch (error) {
     console.error('Error updating user type:', error);
@@ -795,6 +841,7 @@ router.post('/users/quick', async (req, res) => {
       schoolName,
     });
 
+    logAudit(req, { action: 'user.quick_create', category: 'users', targetId: user.id, targetType: 'user', details: { contactName: contactName.trim(), email, phone, schoolName } });
     res.status(201).json({ message: 'User created', user });
   } catch (error) {
     console.error('Error creating quick user:', error);
@@ -807,7 +854,7 @@ router.post('/users', async (req, res) => {
   try {
     const { email, password, userType, contactName, middleName, positionTitle, department, schoolName, principalName, phone, school_id, supervisor, office_id } = req.body;
 
-    const validUserTypes = ['school_staff', 'academica_employee', 'admin', 'superadmin'];
+    const validUserTypes = ['school_staff', 'academica_employee', 'admin', 'superadmin', 'guest'];
     const finalUserType = validUserTypes.includes(userType) ? userType : 'school_staff';
     const isStaffUser = finalUserType === 'school_staff' || finalUserType === 'academica_employee';
 
@@ -859,6 +906,7 @@ router.post('/users', async (req, res) => {
       User.updateRole(user.id, 'admin');
     }
 
+    logAudit(req, { action: 'user.create', category: 'users', targetId: user.id, targetType: 'user', details: { email, contactName, userType: finalUserType, schoolName, department, positionTitle } });
     res.status(201).json({ message: 'User created successfully', user });
   } catch (error) {
     console.error('Error creating user:', error);
@@ -912,6 +960,15 @@ router.put('/users/:id', async (req, res) => {
       office_id
     });
 
+    // Compute before/after diff for changed fields
+    const userFields = { contactName, middleName, positionTitle, department, schoolName, principalName, phone, email, supervisor };
+    const changes = [];
+    for (const [key, newVal] of Object.entries(userFields)) {
+      if (newVal !== undefined && newVal !== targetUser[key]) {
+        changes.push({ field: key, from: targetUser[key] || '', to: newVal || '' });
+      }
+    }
+    logAudit(req, { action: 'user.update', category: 'users', targetId: req.params.id, targetType: 'user', details: { contactName: contactName || targetUser.contactName, email: email || targetUser.email, changes } });
     res.json({ message: 'User profile updated', user: updatedUser });
   } catch (error) {
     console.error('Error updating user profile:', error);
@@ -1022,6 +1079,7 @@ router.post('/schools', (req, res) => {
       is_active: is_active !== false
     });
 
+    logAudit(req, { action: 'school.create', category: 'users', targetId: school.id, targetType: 'school', details: { name: name.trim(), principal_name, district, city, state } });
     res.status(201).json({ message: 'School created', school });
   } catch (error) {
     console.error('Error creating school:', error);
@@ -1268,6 +1326,66 @@ router.get('/offices/:id/users', (req, res) => {
   } catch (error) {
     console.error('Error fetching office users:', error);
     res.status(500).json({ error: 'Failed to fetch office users' });
+  }
+});
+
+// ============================================================
+// AUDIT LOG ENDPOINTS (Superadmin only)
+// ============================================================
+
+// Get paginated audit log with filters
+router.get('/audit-log', requireSuperAdmin, (req, res) => {
+  try {
+    const { page = 1, limit = 50, category, action, userId, startDate, endDate, search } = req.query;
+    const filters = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      category: category || undefined,
+      action: action || undefined,
+      userId: userId || undefined,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      search: search || undefined,
+    };
+
+    const entries = AuditLog.getAll(filters);
+    const total = AuditLog.count(filters);
+
+    res.json({
+      entries,
+      pagination: {
+        page: filters.page,
+        limit: filters.limit,
+        total,
+        totalPages: Math.ceil(total / filters.limit),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching audit log:', error);
+    res.status(500).json({ error: 'Failed to fetch audit log' });
+  }
+});
+
+// Get recent audit log entries (for dashboard widget)
+router.get('/audit-log/recent', requireSuperAdmin, (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 8;
+    const entries = AuditLog.getRecent(limit);
+    res.json({ entries });
+  } catch (error) {
+    console.error('Error fetching recent audit log:', error);
+    res.status(500).json({ error: 'Failed to fetch recent audit log' });
+  }
+});
+
+// Get distinct filter values for dropdowns
+router.get('/audit-log/filters', requireSuperAdmin, (req, res) => {
+  try {
+    const filters = AuditLog.getFilters();
+    res.json(filters);
+  } catch (error) {
+    console.error('Error fetching audit log filters:', error);
+    res.status(500).json({ error: 'Failed to fetch audit log filters' });
   }
 });
 
