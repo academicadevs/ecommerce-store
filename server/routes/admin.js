@@ -89,6 +89,7 @@ router.get('/stats', (req, res) => {
     const stats = {
       totalProducts: Product.count(),
       totalOrders: Order.count(),
+      activeOrders: Order.activeCount(),
       totalUsers: User.count(),
       totalRevenue: Order.getTotalRevenue(),
       recentOrders: Order.getRecentOrders(5)

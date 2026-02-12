@@ -192,6 +192,11 @@ export const Order = {
     return stmt.get().count;
   },
 
+  activeCount: () => {
+    const stmt = db.prepare("SELECT COUNT(*) as count FROM orders WHERE status != 'completed'");
+    return stmt.get().count;
+  },
+
   getTotalRevenue: () => {
     const stmt = db.prepare('SELECT SUM(total) as total FROM orders');
     const result = stmt.get();
