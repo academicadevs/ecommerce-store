@@ -8,6 +8,7 @@ import SchoolsTab from '../../components/admin/SchoolsTab';
 import OfficesTab from '../../components/admin/OfficesTab';
 import SchoolDropdown from '../../components/SchoolDropdown';
 import OfficeDropdown from '../../components/OfficeDropdown';
+import { formatDateOnlyPT, formatDatePT } from '../../utils/dateFormat';
 
 const statusColors = {
   new: 'bg-blue-100 text-blue-800',
@@ -472,7 +473,7 @@ export default function ManageUsers() {
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Joined</label>
                     <span className="text-sm text-gray-600">
-                      {new Date(user.createdAt).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' })}
+                      {formatDateOnlyPT(user.createdAt)}
                     </span>
                   </div>
 
@@ -538,14 +539,7 @@ export default function ManageUsers() {
                               </span>
                             </div>
                             <p className="text-sm text-gray-500">
-                              {new Date(order.createdAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                timeZone: 'America/Los_Angeles',
-                              })}
+                              {formatDatePT(order.createdAt, { month: 'long' })}
                             </p>
                           </div>
                           <div className="text-right">

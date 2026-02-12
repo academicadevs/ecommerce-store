@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import OrderDetailModal from '../../components/admin/OrderDetailModal';
 import usePolling from '../../hooks/usePolling';
+import { formatDateShortPT } from '../../utils/dateFormat';
 
 const statusOptions = ['new', 'waiting_feedback', 'in_progress', 'submitted_to_kimp360', 'waiting_signoff', 'sent_to_print', 'completed', 'on_hold'];
 
@@ -369,7 +370,7 @@ export default function ManageOrders() {
                         </span>
                       )}
                       <span>•</span>
-                      <span>{new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' })}</span>
+                      <span>{formatDateShortPT(order.createdAt)}</span>
                     </div>
                   </div>
 

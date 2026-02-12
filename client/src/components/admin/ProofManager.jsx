@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { adminAPI } from '../../services/api';
+import { formatDatePT } from '../../utils/dateFormat';
 
 const statusColors = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -85,22 +86,7 @@ export default function ProofManager({ orderId, orderNumber, proofs, ccEmails = 
     alert('Proof link copied to clipboard!');
   };
 
-  const formatDate = (dateStr) => {
-    // SQLite CURRENT_TIMESTAMP stores UTC without 'Z' suffix — append it so
-    // JavaScript parses the value as UTC rather than local time.
-    let normalized = dateStr;
-    if (normalized && !normalized.endsWith('Z') && !normalized.includes('+')) {
-      normalized = normalized.replace(' ', 'T') + 'Z';
-    }
-    return new Date(normalized).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'America/Los_Angeles',
-    });
-  };
+  const formatDate = (dateStr) => formatDatePT(dateStr);
 
   return (
     <div className="space-y-4">

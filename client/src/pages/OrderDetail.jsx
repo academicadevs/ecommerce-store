@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { ordersAPI } from '../services/api';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import FilePreviewModal from '../components/common/FilePreviewModal';
+import { formatDatePT } from '../utils/dateFormat';
 
 const statusColors = {
   new: 'badge-info',
@@ -90,14 +91,7 @@ export default function OrderDetail() {
                 Request {order.orderNumber || `#${order.id.slice(0, 8).toUpperCase()}`}
               </h1>
               <p className="text-sm text-gray-500">
-                Submitted on {new Date(order.createdAt).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  timeZone: 'America/Los_Angeles',
-                })} PT
+                Submitted on {formatDatePT(order.createdAt, { month: 'long' })} PT
               </p>
             </div>
             <span className={`badge ${statusColors[getDisplayStatus(order.status)] || 'badge-info'} text-sm px-3 py-1`}>

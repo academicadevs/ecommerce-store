@@ -4,9 +4,10 @@ import { v4 as uuidv4 } from 'uuid';
 export const OrderCommunication = {
   create: ({ orderId, direction, adminId, senderEmail, recipientEmail, subject, body, replyToToken, attachments, messageId }) => {
     const id = uuidv4();
+    const now = new Date().toISOString();
     const stmt = db.prepare(`
-      INSERT INTO order_communications (id, orderId, direction, adminId, senderEmail, recipientEmail, subject, body, replyToToken, attachments, messageId)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO order_communications (id, orderId, direction, adminId, senderEmail, recipientEmail, subject, body, replyToToken, attachments, messageId, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     stmt.run(
       id,
@@ -19,7 +20,8 @@ export const OrderCommunication = {
       body,
       replyToToken || null,
       attachments ? JSON.stringify(attachments) : null,
-      messageId || null
+      messageId || null,
+      now
     );
     return OrderCommunication.findById(id);
   },

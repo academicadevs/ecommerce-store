@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ordersAPI } from '../services/api';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { formatDateOnlyPT } from '../utils/dateFormat';
 
 export default function OrderConfirmation() {
   const { orderId } = useParams();
@@ -68,7 +69,7 @@ export default function OrderConfirmation() {
             </div>
             <div className="text-right">
               <p className="text-primary-100 text-sm">Request Date</p>
-              <p className="font-medium">{new Date(order.createdAt).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' })}</p>
+              <p className="font-medium">{formatDateOnlyPT(order.createdAt)}</p>
             </div>
           </div>
         </div>

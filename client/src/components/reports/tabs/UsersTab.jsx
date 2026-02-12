@@ -16,6 +16,7 @@ import { reportsAPI } from '../../../services/api';
 import LoadingSpinner from '../../common/LoadingSpinner';
 import TopSchoolsTable from '../charts/TopSchoolsTable';
 import ExportButton from '../ExportButton';
+import { formatDateShortPT } from '../../../utils/dateFormat';
 
 const userTypeLabels = {
   school_staff: 'School Staff',
@@ -73,8 +74,7 @@ export default function UsersTab({ dateRange }) {
   }
 
   const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' });
+    return formatDateShortPT(dateStr);
   };
 
   const userTypeData = usersData?.byType?.map(item => ({

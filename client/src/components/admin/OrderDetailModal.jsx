@@ -7,6 +7,7 @@ import ProofManager from './ProofManager';
 import UserDropdown from '../UserDropdown';
 import InlineUserCreateForm from './InlineUserCreateForm';
 import { adminAPI } from '../../services/api';
+import { formatDatePT } from '../../utils/dateFormat';
 import usePolling from '../../hooks/usePolling';
 
 const statusOptions = ['new', 'waiting_feedback', 'in_progress', 'submitted_to_kimp360', 'waiting_signoff', 'sent_to_print', 'completed', 'on_hold'];
@@ -368,15 +369,7 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
             </select>
           </div>
           <div className="ml-auto text-sm text-gray-500">
-            Submitted {new Date(order.createdAt).toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              timeZone: 'America/Los_Angeles',
-            })} PT
+            Submitted {formatDatePT(order.createdAt, { weekday: 'long', month: 'long' })} PT
           </div>
         </div>
 
@@ -642,13 +635,7 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
                       </div>
                       <p className="text-gray-700 text-sm whitespace-pre-wrap">{note.note}</p>
                       <p className="text-gray-400 text-xs mt-1">
-                        {new Date(note.createdAt).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          timeZone: 'America/Los_Angeles',
-                        })}
+                        {formatDatePT(note.createdAt, { year: undefined })}
                       </p>
                     </div>
                   ))

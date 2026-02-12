@@ -14,8 +14,8 @@ export default function ExportButton({ data, columns, reportType, title, dateRan
         columns,
         title,
         dateRange: dateRange ? {
-          startDate: dateRange.startDate.toLocaleDateString(),
-          endDate: dateRange.endDate.toLocaleDateString()
+          startDate: dateRange.startDate.toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' }),
+          endDate: dateRange.endDate.toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' })
         } : undefined,
         summary
       });

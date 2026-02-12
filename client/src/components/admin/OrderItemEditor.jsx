@@ -2,6 +2,7 @@ import { useState } from 'react';
 import ItemEditModal from './ItemEditModal';
 import SpecialRequestEditModal from './SpecialRequestEditModal';
 import FilePreviewModal from '../common/FilePreviewModal';
+import { formatDateOnlyPT } from '../../utils/dateFormat';
 
 // Component to display Custom Request details
 function CustomRequestDetails({ data, onPreviewFile }) {
@@ -24,7 +25,7 @@ function CustomRequestDetails({ data, onPreviewFile }) {
       {data.eventDate && (
         <div>
           <span className="text-xs text-gray-500 uppercase">Event Date</span>
-          <p className="text-gray-700">{new Date(data.eventDate).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' })}</p>
+          <p className="text-gray-700">{formatDateOnlyPT(data.eventDate)}</p>
         </div>
       )}
 
@@ -182,7 +183,7 @@ function MetaAdsDetails({ data }) {
           {data.budgetTimeline.startDate && (
             <div>
               <span className="text-xs text-gray-500 uppercase">Start Date</span>
-              <p className="text-gray-700">{new Date(data.budgetTimeline.startDate).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' })}</p>
+              <p className="text-gray-700">{formatDateOnlyPT(data.budgetTimeline.startDate)}</p>
             </div>
           )}
         </div>

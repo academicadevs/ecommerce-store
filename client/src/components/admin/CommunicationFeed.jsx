@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatDatePT } from '../../utils/dateFormat';
 
 export default function CommunicationFeed({ communications, loading }) {
   const [previewImage, setPreviewImage] = useState(null);
@@ -108,13 +109,7 @@ export default function CommunicationFeed({ communications, loading }) {
                 )}
               </div>
               <span className="text-xs text-gray-500">
-                {new Date(comm.createdAt).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  timeZone: 'America/Los_Angeles',
-                })}
+                {formatDatePT(comm.createdAt, { year: undefined })}
               </span>
             </div>
 

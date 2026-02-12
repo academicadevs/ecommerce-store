@@ -7,19 +7,17 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
+import { formatDatePT, formatDateShortPT } from '../../../utils/dateFormat';
 
 export default function OrderVolumeChart({ data, groupBy = 'day' }) {
   const formatXAxis = (value) => {
     if (groupBy === 'month') {
-      const [year, month] = value.split('-');
-      const date = new Date(year, parseInt(month) - 1);
-      return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'America/Los_Angeles' });
+      return formatDatePT(value + '-01', { month: 'short', year: '2-digit', day: undefined, hour: undefined, minute: undefined });
     }
     if (groupBy === 'week') {
       return value.replace('-W', ' W');
     }
-    const date = new Date(value);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' });
+    return formatDateShortPT(value);
   };
 
   const CustomTooltip = ({ active, payload, label }) => {

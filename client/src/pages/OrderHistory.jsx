@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ordersAPI } from '../services/api';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { formatDatePT } from '../utils/dateFormat';
 
 const statusColors = {
   new: 'badge-info',
@@ -92,12 +93,7 @@ export default function OrderHistory() {
                       </span>
                     </div>
                     <p className="text-sm text-gray-500">
-                      Submitted on {new Date(order.createdAt).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        timeZone: 'America/Los_Angeles',
-                      })}
+                      Submitted on {formatDatePT(order.createdAt, { month: 'long', hour: undefined, minute: undefined })}
                     </p>
                   </div>
                   <div className="text-right">

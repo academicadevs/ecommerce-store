@@ -23,8 +23,8 @@ function getDateRange(query) {
   return {
     startDate: startDate.toISOString(),
     endDate: endDate.toISOString(),
-    startDateFormatted: startDate.toLocaleDateString(),
-    endDateFormatted: endDate.toLocaleDateString()
+    startDateFormatted: startDate.toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' }),
+    endDateFormatted: endDate.toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' })
   };
 }
 
