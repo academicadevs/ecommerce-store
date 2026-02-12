@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import usePolling from '../../hooks/usePolling';
@@ -28,6 +28,7 @@ const statusBadgeClass = {
 };
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
@@ -328,7 +329,11 @@ export default function AdminDashboard() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {stats.recentOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50">
+                  <tr
+                    key={order.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => navigate('/admin/orders')}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="font-mono text-sm">{order.orderNumber || `#${order.id.slice(0, 8).toUpperCase()}`}</span>
                     </td>

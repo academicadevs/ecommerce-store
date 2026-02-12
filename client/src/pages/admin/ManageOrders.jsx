@@ -315,7 +315,11 @@ export default function ManageOrders() {
       ) : (
         <div className="space-y-2">
           {filteredOrders.map((order) => (
-            <div key={order.id} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+            <div
+              key={order.id}
+              className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 cursor-pointer hover:border-academica-blue hover:shadow-md transition-all"
+              onClick={() => handleViewDetails(order)}
+            >
               {/* Order Row */}
               <div className="px-4 py-3">
                 <div className="flex flex-col lg:flex-row lg:items-center gap-3">
@@ -375,7 +379,7 @@ export default function ManageOrders() {
                   </div>
 
                   {/* Status & Actions */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                     <select
                       value={order.assignedTo || ''}
                       onChange={(e) => handleAssignmentChange(order.id, e.target.value)}
@@ -402,13 +406,6 @@ export default function ManageOrders() {
                         </option>
                       ))}
                     </select>
-
-                    <button
-                      onClick={() => handleViewDetails(order)}
-                      className="px-3 py-1.5 text-sm bg-academica-blue text-white rounded hover:bg-academica-blue-dark transition-colors"
-                    >
-                      View Details
-                    </button>
                   </div>
                 </div>
               </div>
