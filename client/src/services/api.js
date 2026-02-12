@@ -128,6 +128,7 @@ export const adminAPI = {
   getAdmins: () => api.get('/admin/admins'),
   // Users
   getUsers: () => api.get('/admin/users'),
+  createQuickUser: (data) => api.post('/admin/users/quick', data),
   createUser: (data) => api.post('/admin/users', data),
   updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   updateUserPassword: (id, password) => api.put(`/admin/users/${id}/password`, { password }),

@@ -159,9 +159,12 @@ router.post('/', async (req, res) => {
     // For custom requests and meta ads campaigns, cart can be empty
     const isSpecialRequest = isCustomRequest || isMetaAdsCampaign;
 
-    // Validate school/contact info (relaxed for special requests)
-    if (!shippingInfo || !shippingInfo.email) {
+    // Validate school/contact info (relaxed for special requests and admin orders)
+    if (!shippingInfo) {
       return res.status(400).json({ error: 'Contact information is required' });
+    }
+    if (!shippingInfo.email && req.user.role !== 'admin') {
+      return res.status(400).json({ error: 'Email is required' });
     }
 
     // Determine the user ID for the order

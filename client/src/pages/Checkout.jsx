@@ -24,10 +24,17 @@ export default function Checkout() {
   const [userSearch, setUserSearch] = useState('');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
+  // 3-mode admin panel
+  const [orderMode, setOrderMode] = useState('existing'); // 'self' | 'existing' | 'new'
+  const [newUserData, setNewUserData] = useState({ contactName: '', email: '', phone: '', schoolName: '' });
+
   // Determine if current order is for Academica employee
   const isAcademicaEmployee = isAdmin
     ? orderingAs === 'academica_employee'
     : user?.userType === 'academica_employee';
+
+  // When admin is creating a new user, relax form validation
+  const adminNewMode = isAdmin && orderMode === 'new';
 
   const [formData, setFormData] = useState({
     school_id: '',
@@ -121,6 +128,8 @@ export default function Checkout() {
     setSelectedUserId('');
     setUserSearch('');
     setShowUserDropdown(false);
+    setOrderMode('existing');
+    setNewUserData({ contactName: '', email: '', phone: '', schoolName: '' });
     // Clear form when switching types
     setFormData({
       school_id: '',
@@ -136,6 +145,49 @@ export default function Checkout() {
       additionalEmails: '',
       notes: formData.notes, // Keep notes
     });
+  };
+
+  // Handle order mode change (self / existing / new)
+  const handleOrderModeChange = (mode) => {
+    setOrderMode(mode);
+    setSelectedUserId('');
+    setUserSearch('');
+    setShowUserDropdown(false);
+    setNewUserData({ contactName: '', email: '', phone: '', schoolName: '' });
+
+    if (mode === 'self') {
+      // Populate form with admin's own info
+      setFormData({
+        school_id: user?.school_id || '',
+        schoolName: user?.schoolName || '',
+        contactName: user?.contactName || '',
+        positionTitle: user?.positionTitle || '',
+        department: user?.department || '',
+        principalName: user?.principalName || '',
+        supervisor: user?.supervisor || '',
+        office_id: user?.office_id || '',
+        email: user?.email || '',
+        phone: user?.phone || '',
+        additionalEmails: '',
+        notes: formData.notes,
+      });
+    } else {
+      // Clear form for existing/new user selection
+      setFormData({
+        school_id: '',
+        schoolName: '',
+        contactName: '',
+        positionTitle: '',
+        department: '',
+        principalName: '',
+        supervisor: '',
+        office_id: '',
+        email: '',
+        phone: '',
+        additionalEmails: '',
+        notes: formData.notes,
+      });
+    }
   };
 
   // Handle user selection - auto-populate form
@@ -204,6 +256,13 @@ export default function Checkout() {
     setLoading(true);
 
     try {
+      // Validate new user name when in 'new' mode
+      if (isAdmin && orderMode === 'new' && !newUserData.contactName.trim()) {
+        setError('Name is required when creating a new person');
+        setLoading(false);
+        return;
+      }
+
       // Parse additional emails (comma-separated, trimmed)
       const additionalEmails = formData.additionalEmails
         ? formData.additionalEmails.split(',').map(e => e.trim()).filter(e => e)
@@ -236,14 +295,27 @@ export default function Checkout() {
             orderedBy: 'school_staff',
           };
 
-      // If admin placed order on behalf of someone, track which user
-      if (isAdmin && selectedUserId) {
-        shippingInfo.orderedForUserId = selectedUserId;
+      // Determine on-behalf-of user ID (top-level, matching backend)
+      let onBehalfOfUserId = null;
+      if (isAdmin && orderMode === 'existing' && selectedUserId) {
+        onBehalfOfUserId = selectedUserId;
+      } else if (isAdmin && orderMode === 'new') {
+        // Create user first, then use their ID
+        const createRes = await adminAPI.createQuickUser(newUserData);
+        onBehalfOfUserId = createRes.data.user.id;
+        // Populate shippingInfo from new user data if form fields are empty
+        if (!shippingInfo.contactName && newUserData.contactName) {
+          shippingInfo.contactName = newUserData.contactName;
+        }
+        if (!shippingInfo.email && newUserData.email) {
+          shippingInfo.email = newUserData.email;
+        }
       }
 
       const response = await ordersAPI.create({
         shippingInfo,
         notes: formData.notes,
+        onBehalfOfUserId,
       });
 
       await clearCart();
@@ -299,122 +371,193 @@ export default function Checkout() {
                 {isAcademicaEmployee ? 'Academica Employee Order' : 'School Information'}
               </h2>
 
-              {/* Admin: Order on behalf of selection */}
+              {/* Admin: Order mode selection */}
               {isAdmin && (
                 <div className="space-y-4 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="text-sm font-medium text-blue-800 mb-2">
-                    Submitting request on behalf of:
+                    Admin Order Options
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      User Type
-                    </label>
-                    <select
-                      value={orderingAs}
-                      onChange={(e) => handleOrderingAsChange(e.target.value)}
-                      className="input"
-                    >
-                      <option value="school_staff">School Staff Member</option>
-                      <option value="academica_employee">Academica Employee (Internal)</option>
-                    </select>
-                  </div>
-
-                  <div className="relative" ref={dropdownRef}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Search & Select User
-                    </label>
-                    {loadingUsers ? (
-                      <div className="text-sm text-gray-500">Loading users...</div>
-                    ) : (
-                      <>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={userSearch}
-                            onChange={(e) => handleSearchChange(e.target.value)}
-                            onFocus={() => setShowUserDropdown(true)}
-                            placeholder="Search by name, email, school, or department..."
-                            className="input pr-8"
-                          />
-                          {userSearch && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setUserSearch('');
-                                setSelectedUserId('');
-                                setShowUserDropdown(false);
-                                setFormData({
-                                  school_id: '',
-                                  schoolName: '',
-                                  contactName: '',
-                                  positionTitle: '',
-                                  department: '',
-                                  principalName: '',
-                                  supervisor: '',
-                                  office_id: '',
-                                  email: '',
-                                  phone: '',
-                                  additionalEmails: '',
-                                  notes: formData.notes,
-                                });
-                              }}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          )}
+                  {/* 3-mode radio group */}
+                  <div className="flex flex-col gap-2">
+                    {[
+                      { value: 'self', label: 'Submit as myself', desc: 'Order under your own account' },
+                      { value: 'existing', label: 'Submit for existing user', desc: 'Search and select an existing user' },
+                      { value: 'new', label: 'Submit for new person', desc: 'Create a new user on the fly' },
+                    ].map(opt => (
+                      <label
+                        key={opt.value}
+                        className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer border transition-colors ${
+                          orderMode === opt.value
+                            ? 'border-academica-blue bg-white'
+                            : 'border-transparent hover:bg-blue-100/50'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="orderMode"
+                          value={opt.value}
+                          checked={orderMode === opt.value}
+                          onChange={() => handleOrderModeChange(opt.value)}
+                          className="mt-0.5"
+                        />
+                        <div>
+                          <div className="font-medium text-charcoal text-sm">{opt.label}</div>
+                          <div className="text-xs text-gray-500">{opt.desc}</div>
                         </div>
-                        {showUserDropdown && !selectedUserId && (
-                          <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                            {filteredUsers.length > 0 ? (
-                              filteredUsers.map(u => (
-                                <button
-                                  key={u.id}
-                                  type="button"
-                                  onClick={() => handleUserSelect(u.id)}
-                                  className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-0"
-                                >
-                                  <div className="font-medium text-charcoal text-sm">{u.contactName}</div>
-                                  <div className="text-xs text-gray-500">
-                                    {u.email}
-                                    {u.schoolName && ` • ${u.schoolName}`}
-                                    {u.department && ` • ${u.department}`}
-                                  </div>
-                                </button>
-                              ))
-                            ) : (
-                              <div className="px-3 py-2 text-sm text-gray-500">
-                                {userSearch ? 'No users found matching your search' : 'No users available. Enter details manually below.'}
-                              </div>
-                            )}
-                            {filteredUsers.length > 0 && (
+                      </label>
+                    ))}
+                  </div>
+
+                  {/* User type toggle (for existing/new modes) */}
+                  {orderMode !== 'self' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        User Type
+                      </label>
+                      <select
+                        value={orderingAs}
+                        onChange={(e) => handleOrderingAsChange(e.target.value)}
+                        className="input"
+                      >
+                        <option value="school_staff">School Staff Member</option>
+                        <option value="academica_employee">Academica Employee (Internal)</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Existing user search */}
+                  {orderMode === 'existing' && (
+                    <div className="relative" ref={dropdownRef}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Search & Select User
+                      </label>
+                      {loadingUsers ? (
+                        <div className="text-sm text-gray-500">Loading users...</div>
+                      ) : (
+                        <>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={userSearch}
+                              onChange={(e) => handleSearchChange(e.target.value)}
+                              onFocus={() => setShowUserDropdown(true)}
+                              placeholder="Search by name, email, school, or department..."
+                              className="input pr-8"
+                            />
+                            {userSearch && (
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setShowUserDropdown(false);
+                                  setUserSearch('');
                                   setSelectedUserId('');
+                                  setShowUserDropdown(false);
+                                  setFormData({
+                                    school_id: '',
+                                    schoolName: '',
+                                    contactName: '',
+                                    positionTitle: '',
+                                    department: '',
+                                    principalName: '',
+                                    supervisor: '',
+                                    office_id: '',
+                                    email: '',
+                                    phone: '',
+                                    additionalEmails: '',
+                                    notes: formData.notes,
+                                  });
                                 }}
-                                className="w-full text-left px-3 py-2 text-sm text-academica-blue hover:bg-blue-50 border-t border-gray-200"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                               >
-                                Or enter details manually below
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
                               </button>
                             )}
                           </div>
-                        )}
-                        {selectedUserId && (
-                          <div className="mt-1 text-xs text-green-600 flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            User selected - form populated
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
+                          {showUserDropdown && !selectedUserId && (
+                            <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                              {filteredUsers.length > 0 ? (
+                                filteredUsers.map(u => (
+                                  <button
+                                    key={u.id}
+                                    type="button"
+                                    onClick={() => handleUserSelect(u.id)}
+                                    className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                                  >
+                                    <div className="font-medium text-charcoal text-sm">{u.contactName}</div>
+                                    <div className="text-xs text-gray-500">
+                                      {u.email}
+                                      {u.schoolName && ` • ${u.schoolName}`}
+                                      {u.department && ` • ${u.department}`}
+                                    </div>
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="px-3 py-2 text-sm text-gray-500">
+                                  {userSearch ? 'No users found matching your search' : 'No users available'}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {selectedUserId && (
+                            <div className="mt-1 text-xs text-green-600 flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              User selected - form populated
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* New person quick-create fields */}
+                  {orderMode === 'new' && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                        <input
+                          type="text"
+                          value={newUserData.contactName}
+                          onChange={(e) => setNewUserData(prev => ({ ...prev, contactName: e.target.value }))}
+                          className="input"
+                          placeholder="Full name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email (optional)</label>
+                        <input
+                          type="email"
+                          value={newUserData.email}
+                          onChange={(e) => setNewUserData(prev => ({ ...prev, email: e.target.value }))}
+                          className="input"
+                          placeholder="email@example.com"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone (optional)</label>
+                        <input
+                          type="tel"
+                          value={newUserData.phone}
+                          onChange={(e) => setNewUserData(prev => ({ ...prev, phone: e.target.value }))}
+                          className="input"
+                          placeholder="(555) 123-4567"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">School (optional)</label>
+                        <input
+                          type="text"
+                          value={newUserData.schoolName}
+                          onChange={(e) => setNewUserData(prev => ({ ...prev, schoolName: e.target.value }))}
+                          className="input"
+                          placeholder="School name"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -436,7 +579,7 @@ export default function Checkout() {
                     <OfficeDropdown
                       value={formData.office_id}
                       onChange={(officeId) => setFormData(prev => ({ ...prev, office_id: officeId }))}
-                      required
+                      required={!adminNewMode}
                     />
                   </div>
                 )}
@@ -454,7 +597,7 @@ export default function Checkout() {
                           setFormData(prev => ({ ...prev, school_id: schoolId }));
                         }}
                         onPrincipalChange={(principalName) => setFormData(prev => ({ ...prev, principalName }))}
-                        required
+                        required={!adminNewMode}
                       />
                     </div>
 
@@ -475,7 +618,7 @@ export default function Checkout() {
                         name="supervisor"
                         value={formData.supervisor}
                         onChange={handleChange}
-                        required
+                        required={!adminNewMode}
                         className="input"
                         placeholder="Your direct supervisor's name"
                       />
@@ -494,7 +637,7 @@ export default function Checkout() {
                       name="contactName"
                       value={formData.contactName}
                       onChange={handleChange}
-                      required
+                      required={!adminNewMode}
                       className="input"
                     />
                   </div>
@@ -508,7 +651,7 @@ export default function Checkout() {
                       name={isAcademicaEmployee ? 'department' : 'positionTitle'}
                       value={isAcademicaEmployee ? formData.department : formData.positionTitle}
                       onChange={handleChange}
-                      required
+                      required={!adminNewMode}
                       className="input"
                       placeholder={isAcademicaEmployee ? 'Marketing, HR, Finance...' : 'Marketing Coordinator'}
                     />
@@ -526,7 +669,7 @@ export default function Checkout() {
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
-                      required
+                      required={!adminNewMode}
                       className="input"
                     />
                   </div>
@@ -540,7 +683,7 @@ export default function Checkout() {
                       name="phone"
                       value={formData.phone}
                       onChange={handleChange}
-                      required
+                      required={!adminNewMode}
                       className="input"
                     />
                   </div>

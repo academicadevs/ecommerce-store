@@ -134,6 +134,27 @@ export const User = {
     return { id, email, userType: 'guest', schoolName: schoolName || 'N/A', contactName, phone: phone || null, role: 'user' };
   },
 
+  createQuickUser: async ({ contactName, email, phone, schoolName }) => {
+    if (email) {
+      const existing = User.findByEmail(email);
+      if (existing) return existing;
+    }
+
+    const id = uuidv4();
+    const finalEmail = email || `pending-${id.substring(0, 8)}@placeholder.local`;
+    const randomPassword = uuidv4();
+    const hashedPassword = await bcrypt.hash(randomPassword.toLowerCase(), 10);
+
+    const stmt = db.prepare(`
+      INSERT INTO users (id, email, password, userType, schoolName, contactName, phone)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    stmt.run(id, finalEmail, hashedPassword, 'guest', schoolName || 'N/A', contactName, phone || null);
+
+    return { id, email: finalEmail, userType: 'guest', schoolName: schoolName || 'N/A', contactName, phone: phone || null, role: 'user' };
+  },
+
   createAdmin: async ({ email, password }) => {
     const existing = User.findByEmail(email);
     if (existing) {

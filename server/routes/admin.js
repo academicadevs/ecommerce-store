@@ -771,6 +771,36 @@ router.put('/users/:id/userType', (req, res) => {
   }
 });
 
+// Quick-create a user (admin only) - only name required
+router.post('/users/quick', async (req, res) => {
+  try {
+    const { contactName, email, phone, schoolName } = req.body;
+
+    if (!contactName?.trim()) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+
+    if (email) {
+      const existing = User.findByEmail(email);
+      if (existing) {
+        return res.json({ message: 'Existing user found', user: existing });
+      }
+    }
+
+    const user = await User.createQuickUser({
+      contactName: contactName.trim(),
+      email,
+      phone,
+      schoolName,
+    });
+
+    res.status(201).json({ message: 'User created', user });
+  } catch (error) {
+    console.error('Error creating quick user:', error);
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
 // Create a new user (admin only)
 router.post('/users', async (req, res) => {
   try {

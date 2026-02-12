@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ordersAPI } from '../services/api';
+import { ordersAPI, adminAPI } from '../services/api';
+import UserDropdown from '../components/UserDropdown';
 
 const MAX_FILES = 5;
 const MAX_FILE_SIZE = 250 * 1024 * 1024; // 250MB
@@ -379,6 +380,13 @@ export default function QuickRequest() {
   const [success, setSuccess] = useState(false);
   const [submittedOrderNumber, setSubmittedOrderNumber] = useState('');
 
+  // Admin on-behalf-of state
+  const isAdmin = user?.userType === 'superadmin' || user?.role === 'admin';
+  const [adminOrderMode, setAdminOrderMode] = useState('self'); // 'self' | 'existing' | 'new'
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [selectedUserInfo, setSelectedUserInfo] = useState(null);
+  const [onBehalfInfo, setOnBehalfInfo] = useState({ contactName: '', email: '', phone: '', schoolName: '' });
+
   // Restore session data on mount (from sign-in redirect flow)
   useEffect(() => {
     try {
@@ -580,18 +588,51 @@ export default function QuickRequest() {
 
       let response;
       if (isAuthenticated) {
-        response = await ordersAPI.create({
-          shippingInfo: {
+        let submitShippingInfo;
+        let onBehalfOfUserId = null;
+
+        if (isAdmin && adminOrderMode === 'existing' && selectedUserId) {
+          onBehalfOfUserId = selectedUserId;
+          submitShippingInfo = {
+            schoolName: selectedUserInfo?.schoolName || '',
+            contactName: selectedUserInfo?.contactName || '',
+            positionTitle: selectedUserInfo?.positionTitle || 'Quick Request',
+            principalName: selectedUserInfo?.principalName || 'N/A',
+            email: selectedUserInfo?.email || '',
+            phone: selectedUserInfo?.phone || '',
+          };
+        } else if (isAdmin && adminOrderMode === 'new') {
+          if (!onBehalfInfo.contactName.trim()) {
+            setError('Name is required when creating a new person');
+            setLoading(false);
+            return;
+          }
+          const createRes = await adminAPI.createQuickUser(onBehalfInfo);
+          onBehalfOfUserId = createRes.data.user.id;
+          submitShippingInfo = {
+            schoolName: onBehalfInfo.schoolName || '',
+            contactName: onBehalfInfo.contactName,
+            email: onBehalfInfo.email || '',
+            phone: onBehalfInfo.phone || '',
+          };
+        } else {
+          // Self or non-admin
+          submitShippingInfo = {
             schoolName: user?.schoolName || '',
             contactName: user?.contactName || '',
             positionTitle: user?.positionTitle || 'Quick Request',
             principalName: user?.principalName || 'N/A',
             email: user?.email || '',
             phone: user?.phone || '',
-          },
+          };
+        }
+
+        response = await ordersAPI.create({
+          shippingInfo: submitShippingInfo,
           notes: null,
           isCustomRequest: true,
           customRequestData,
+          onBehalfOfUserId,
         });
       } else {
         if (!validateGuestInfo()) {
@@ -829,7 +870,135 @@ export default function QuickRequest() {
               {/* Auth state */}
               {isAuthenticated ? (
                 <>
-                  <AuthenticatedSummary user={user} />
+                  {/* Admin on-behalf-of panel */}
+                  {isAdmin ? (
+                    <div className="space-y-4 p-4 bg-blue-50 rounded-xl border border-blue-200 chat-bubble-appear" style={{ animationDelay: '200ms' }}>
+                      <div className="text-sm font-medium text-blue-800">Admin Order Options</div>
+
+                      {/* 3-mode radio group */}
+                      <div className="flex flex-col gap-2">
+                        {[
+                          { value: 'self', label: 'Submit under my account', desc: 'Order linked to your account' },
+                          { value: 'existing', label: 'Submit for existing user', desc: 'Search and select a user' },
+                          { value: 'new', label: 'Submit for new person', desc: 'Create a new user on the fly' },
+                        ].map(opt => (
+                          <label
+                            key={opt.value}
+                            className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer border transition-colors ${
+                              adminOrderMode === opt.value
+                                ? 'border-academica-blue bg-white'
+                                : 'border-transparent hover:bg-blue-100/50'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="adminOrderMode"
+                              value={opt.value}
+                              checked={adminOrderMode === opt.value}
+                              onChange={() => {
+                                setAdminOrderMode(opt.value);
+                                setSelectedUserId(null);
+                                setSelectedUserInfo(null);
+                                setOnBehalfInfo({ contactName: '', email: '', phone: '', schoolName: '' });
+                              }}
+                              className="mt-0.5"
+                            />
+                            <div>
+                              <div className="font-medium text-charcoal text-sm">{opt.label}</div>
+                              <div className="text-xs text-gray-500">{opt.desc}</div>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+
+                      {/* Self mode - show current user summary */}
+                      {adminOrderMode === 'self' && (
+                        <AuthenticatedSummary user={user} />
+                      )}
+
+                      {/* Existing user search */}
+                      {adminOrderMode === 'existing' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Search & Select User
+                          </label>
+                          <UserDropdown
+                            value={selectedUserId}
+                            onChange={(userId, userObj) => {
+                              setSelectedUserId(userId);
+                              setSelectedUserInfo(userObj);
+                            }}
+                            onClear={() => {
+                              setSelectedUserId(null);
+                              setSelectedUserInfo(null);
+                            }}
+                            onCreateNew={() => {
+                              setAdminOrderMode('new');
+                              setSelectedUserId(null);
+                              setSelectedUserInfo(null);
+                            }}
+                          />
+                          {selectedUserInfo && (
+                            <div className="mt-2 text-xs text-green-600 flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Selected: {selectedUserInfo.contactName} ({selectedUserInfo.email})
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* New person quick-create fields */}
+                      {adminOrderMode === 'new' && (
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                            <input
+                              type="text"
+                              value={onBehalfInfo.contactName}
+                              onChange={(e) => setOnBehalfInfo(prev => ({ ...prev, contactName: e.target.value }))}
+                              className="input"
+                              placeholder="Full name"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Email (optional)</label>
+                            <input
+                              type="email"
+                              value={onBehalfInfo.email}
+                              onChange={(e) => setOnBehalfInfo(prev => ({ ...prev, email: e.target.value }))}
+                              className="input"
+                              placeholder="email@example.com"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Phone (optional)</label>
+                            <input
+                              type="tel"
+                              value={onBehalfInfo.phone}
+                              onChange={(e) => setOnBehalfInfo(prev => ({ ...prev, phone: e.target.value }))}
+                              className="input"
+                              placeholder="(555) 123-4567"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">School (optional)</label>
+                            <input
+                              type="text"
+                              value={onBehalfInfo.schoolName}
+                              onChange={(e) => setOnBehalfInfo(prev => ({ ...prev, schoolName: e.target.value }))}
+                              className="input"
+                              placeholder="School name"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <AuthenticatedSummary user={user} />
+                  )}
+
                   {error && (
                     <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg">{error}</div>
                   )}
