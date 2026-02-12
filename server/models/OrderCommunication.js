@@ -46,7 +46,7 @@ export const OrderCommunication = {
       FROM order_communications oc
       LEFT JOIN users u ON oc.adminId = u.id
       WHERE oc.orderId = ?
-      ORDER BY oc.createdAt ASC
+      ORDER BY oc.createdAt DESC
     `);
     const comms = stmt.all(orderId);
     return comms.map(comm => {
