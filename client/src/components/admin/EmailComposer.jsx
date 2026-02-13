@@ -229,7 +229,14 @@ AcademicaMart Team`;
                       {Object.keys(opts).length > 0 && (
                         <div className="text-[11px] text-gray-500 mt-0.5 space-y-0.5">
                           {Object.entries(opts).map(([key, value]) => {
-                            if (!value || key === 'customText' || key === 'artworkOption') return null;
+                            if (!value || key === 'customText' || key === 'artworkOption' || key === 'attachments') return null;
+                            if (typeof value === 'object') {
+                              return (
+                                <div key={key}>
+                                  <span className="text-gray-400">{formatOptionLabel(key)}:</span> {Array.isArray(value) ? value.join(', ') : JSON.stringify(value)}
+                                </div>
+                              );
+                            }
                             return (
                               <div key={key}>
                                 <span className="text-gray-400">{formatOptionLabel(key)}:</span> {value}
