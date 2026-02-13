@@ -23,6 +23,7 @@ export default function UserDropdown({
   onClear,
   onCreateNew,
   disabled = false,
+  userTypeFilter = null,
 }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +74,13 @@ export default function UserDropdown({
   };
 
   const filteredUsers = users.filter(user => {
+    // Filter by type if provided
+    if (userTypeFilter) {
+      const typeMatch = userTypeFilter === 'academica_employee'
+        ? user.userType === 'academica_employee'
+        : user.userType === 'school_staff' || !user.userType;
+      if (!typeMatch) return false;
+    }
     if (!searchTerm) return true;
     const query = searchTerm.toLowerCase();
     return (
@@ -162,7 +170,9 @@ export default function UserDropdown({
                     {USER_TYPE_LABELS[user.userType] || 'Staff'}
                   </span>
                 </div>
-                <div className="text-xs text-gray-500">{user.email}</div>
+                {user.email && !user.email.includes('@placeholder.loc') && (
+                  <div className="text-xs text-gray-500">{user.email}</div>
+                )}
                 {user.schoolName && (
                   <div className="text-xs text-gray-400">{user.schoolName}</div>
                 )}

@@ -383,6 +383,7 @@ export default function QuickRequest() {
   // Admin on-behalf-of state
   const isAdmin = user?.userType === 'superadmin' || user?.role === 'admin';
   const [adminOrderMode, setAdminOrderMode] = useState('self'); // 'self' | 'existing' | 'new'
+  const [orderingAs, setOrderingAs] = useState('school_staff');
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [selectedUserInfo, setSelectedUserInfo] = useState(null);
   const [onBehalfInfo, setOnBehalfInfo] = useState({ contactName: '', email: '', phone: '', schoolName: '' });
@@ -897,6 +898,7 @@ export default function QuickRequest() {
                               checked={adminOrderMode === opt.value}
                               onChange={() => {
                                 setAdminOrderMode(opt.value);
+                                setOrderingAs('school_staff');
                                 setSelectedUserId(null);
                                 setSelectedUserInfo(null);
                                 setOnBehalfInfo({ contactName: '', email: '', phone: '', schoolName: '' });
@@ -910,6 +912,25 @@ export default function QuickRequest() {
                           </label>
                         ))}
                       </div>
+
+                      {/* User type toggle (for existing/new modes) */}
+                      {adminOrderMode !== 'self' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">User Type</label>
+                          <select
+                            value={orderingAs}
+                            onChange={(e) => {
+                              setOrderingAs(e.target.value);
+                              setSelectedUserId(null);
+                              setSelectedUserInfo(null);
+                            }}
+                            className="input"
+                          >
+                            <option value="school_staff">School Staff Member</option>
+                            <option value="academica_employee">Academica Employee (Internal)</option>
+                          </select>
+                        </div>
+                      )}
 
                       {/* Self mode - show current user summary */}
                       {adminOrderMode === 'self' && (
@@ -937,6 +958,7 @@ export default function QuickRequest() {
                               setSelectedUserId(null);
                               setSelectedUserInfo(null);
                             }}
+                            userTypeFilter={orderingAs}
                           />
                           {selectedUserInfo && (
                             <div className="mt-2 text-xs text-green-600 flex items-center gap-1">
@@ -969,7 +991,6 @@ export default function QuickRequest() {
                               value={onBehalfInfo.email}
                               onChange={(e) => setOnBehalfInfo(prev => ({ ...prev, email: e.target.value }))}
                               className="input"
-                              placeholder="email@example.com"
                             />
                           </div>
                           <div>

@@ -1,18 +1,17 @@
 import express from 'express';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
 import { authenticate } from '../middleware/auth.js';
 import { logAudit } from '../utils/auditLog.js';
+import { sendPasswordResetEmail } from '../utils/sendgrid.js';
 
 const router = express.Router();
 
 // Register a new user
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, userType, contactName, middleName, positionTitle, department, schoolName, principalName, phone, address, school_id, supervisor, office_id } = req.body;
-
-    // Staff users use middle name as password
-    const isStaffUser = userType === 'school_staff' || userType === 'academica_employee';
+    const { email, password, userType, contactName, positionTitle, department, schoolName, principalName, phone, address, school_id, supervisor, office_id } = req.body;
 
     // Validation
     if (!email || !contactName || !userType) {
@@ -21,24 +20,14 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // For staff users, require middle name; for admin users, require password
-    if (isStaffUser) {
-      if (!middleName || middleName.trim().length < 2) {
-        return res.status(400).json({ error: 'Middle name is required and must be at least 2 characters' });
-      }
-    } else {
-      if (!password || password.length < 6) {
-        return res.status(400).json({ error: 'Password must be at least 6 characters' });
-      }
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
     // Validate based on user type - school_id is required for school staff
     if (userType === 'school_staff') {
       if (!school_id) {
         return res.status(400).json({ error: 'School selection is required for school staff' });
-      }
-      if (!supervisor || !supervisor.trim()) {
-        return res.status(400).json({ error: 'Supervisor name is required for school staff' });
       }
     }
 
@@ -61,7 +50,6 @@ router.post('/register', async (req, res) => {
       password,
       userType,
       contactName,
-      middleName,
       positionTitle,
       department,
       schoolName,
@@ -90,7 +78,6 @@ router.post('/register', async (req, res) => {
         email: user.email,
         userType: user.userType,
         contactName: user.contactName,
-        middleName: user.middleName,
         positionTitle: user.positionTitle,
         department: user.department,
         schoolName: user.schoolName,
@@ -100,7 +87,8 @@ router.post('/register', async (req, res) => {
         school_id: user.school_id,
         supervisor: user.supervisor,
         office_id: user.office_id,
-        role: user.role
+        role: user.role,
+        passwordNeedsUpdate: false
       }
     });
   } catch (error) {
@@ -156,7 +144,8 @@ router.post('/login', async (req, res) => {
         school_id: user.school_id,
         supervisor: user.supervisor,
         office_id: user.office_id,
-        role: user.role
+        role: user.role,
+        passwordNeedsUpdate: !!user.password_needs_update
       }
     });
   } catch (error) {
@@ -167,7 +156,8 @@ router.post('/login', async (req, res) => {
 
 // Get current user
 router.get('/me', authenticate, (req, res) => {
-  const { password, ...user } = req.user;
+  const { password, password_reset_token, password_reset_expires, ...user } = req.user;
+  user.passwordNeedsUpdate = !!user.password_needs_update;
   res.json({ user });
 });
 
@@ -185,12 +175,120 @@ router.put('/profile', authenticate, async (req, res) => {
     stmt.run(contactName, positionTitle, department, schoolName, principalName, phone, address, userId);
 
     const updatedUser = User.findById(userId);
-    const { password, ...user } = updatedUser;
+    const { password, password_reset_token, password_reset_expires, ...user } = updatedUser;
+    user.passwordNeedsUpdate = !!user.password_needs_update;
 
     res.json({ message: 'Profile updated', user });
   } catch (error) {
     console.error('Profile update error:', error);
     res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Change password (authenticated)
+router.put('/change-password', authenticate, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+
+    // If password_needs_update is true, skip currentPassword check (user just authenticated)
+    if (!req.user.password_needs_update) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: 'Current password is required' });
+      }
+      const isValid = await User.validatePassword(currentPassword, req.user.password);
+      if (!isValid) {
+        return res.status(400).json({ error: 'Current password is incorrect' });
+      }
+    }
+
+    await User.updatePassword(userId, newPassword);
+
+    logAudit(req, { action: 'auth.password_change', category: 'auth', targetId: userId, targetType: 'user', details: { email: req.user.email } });
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+// Forgot password (unauthenticated)
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Always return same success message to prevent email enumeration
+    const successMessage = 'If an account exists with that email, a password reset link has been sent.';
+
+    const user = User.findByEmail(email);
+    if (!user) {
+      return res.json({ message: successMessage });
+    }
+
+    // Generate 32-byte random token
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+
+    User.setPasswordResetToken(user.id, hashedToken, expiresAt);
+
+    // Build reset URL
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const resetUrl = `${clientUrl}/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`;
+
+    // Send email
+    const firstName = (user.contactName || 'User').split(' ')[0];
+    await sendPasswordResetEmail({ to: email, contactName: firstName, resetUrl });
+
+    logAudit(req, { action: 'auth.forgot_password', category: 'auth', targetId: user.id, targetType: 'user', details: { email } });
+
+    res.json({ message: successMessage });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Failed to process request' });
+  }
+});
+
+// Reset password (unauthenticated)
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, email, newPassword } = req.body;
+
+    if (!token || !email || !newPassword) {
+      return res.status(400).json({ error: 'Token, email, and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    // Hash provided token and look up
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    const user = User.findByResetToken(hashedToken);
+
+    if (!user || user.email !== email) {
+      return res.status(400).json({ error: 'Invalid or expired reset link' });
+    }
+
+    // Update password and clear token
+    await User.updatePassword(user.id, newPassword);
+    User.clearResetToken(user.id);
+
+    logAudit(req, { action: 'auth.password_reset', category: 'auth', targetId: user.id, targetType: 'user', details: { email } });
+
+    res.json({ message: 'Password reset successfully' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 });
 

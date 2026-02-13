@@ -29,6 +29,13 @@ export default function Login() {
 
     try {
       const user = await login(formData.email, formData.password);
+
+      // If user needs to update password, redirect to profile
+      if (user.passwordNeedsUpdate) {
+        navigate('/profile?updatePassword=true', { replace: true });
+        return;
+      }
+
       // Support returnUrl query param (must start with / to prevent open redirects)
       if (returnUrl && returnUrl.startsWith('/')) {
         navigate(returnUrl, { replace: true });
@@ -90,9 +97,6 @@ export default function Login() {
                 className="input"
                 placeholder="Enter your password"
               />
-              <p className="text-xs text-gray-500 mt-2">
-                <span className="font-medium">School Staff &amp; Academica Employees:</span> Your password is your middle name.
-              </p>
             </div>
 
             <button
@@ -114,7 +118,13 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-4 text-center">
+            <Link to="/forgot-password" className="text-sm text-primary-600 hover:text-primary-700">
+              Forgot your password?
+            </Link>
+          </div>
+
+          <div className="mt-4 text-center">
             <p className="text-gray-600">
               Don't have an account?{' '}
               <Link to="/register" className="text-primary-600 hover:text-primary-700 font-medium">

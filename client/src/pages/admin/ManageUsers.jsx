@@ -67,7 +67,6 @@ export default function ManageUsers() {
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
-    middleName: '',
     contactName: '',
     userType: 'school_staff',
     school_id: '',
@@ -88,7 +87,11 @@ export default function ManageUsers() {
   const [editPassword, setEditPassword] = useState('');
   const [editConfirmPassword, setEditConfirmPassword] = useState('');
 
+  // Guest conversion state
+  const [pendingTypeChange, setPendingTypeChange] = useState(null); // { userId, fromType, toType }
+
   const isSuperAdmin = currentUser?.userType === 'superadmin';
+  const guestUserCount = users.filter(u => u.userType === 'guest').length;
 
   // Filter users based on search query
   const filteredUsers = users.filter(user => {
@@ -139,6 +142,35 @@ export default function ManageUsers() {
   };
 
   const handleUserTypeChange = async (userId, newUserType) => {
+    // Check if converting FROM guest — intercept and open edit modal
+    const targetUser = users.find(u => u.id === userId);
+    if (targetUser?.userType === 'guest' && newUserType !== 'guest') {
+      setPendingTypeChange({ userId, fromType: 'guest', toType: newUserType });
+      // Open edit modal pre-populated for target type
+      const cleanEmail = targetUser.email || '';
+      setEditUser({
+        id: targetUser.id,
+        email: cleanEmail || '',
+        contactName: targetUser.contactName || '',
+        userType: newUserType, // Set to TARGET type so correct fields render
+        school_id: targetUser.school_id || '',
+        schoolName: targetUser.schoolName === 'N/A' ? '' : (targetUser.schoolName || ''),
+        principalName: targetUser.principalName || '',
+        supervisor: targetUser.supervisor || '',
+        positionTitle: targetUser.positionTitle || '',
+        department: targetUser.department || '',
+        office_id: targetUser.office_id || '',
+        phone: targetUser.phone || '',
+        originalUserType: 'guest', // Track that this is a conversion
+      });
+      setEditPassword('');
+      setEditConfirmPassword('');
+      setEditError('');
+      setShowEditModal(true);
+      return;
+    }
+
+    // Non-guest: direct type change
     setUpdatingUserType(userId);
     try {
       await adminAPI.updateUserType(userId, newUserType);
@@ -175,7 +207,6 @@ export default function ManageUsers() {
     setNewUser({
       email: '',
       password: '',
-      middleName: '',
       contactName: '',
       userType: 'school_staff',
       school_id: '',
@@ -189,9 +220,6 @@ export default function ManageUsers() {
     });
     setAddError('');
   };
-
-  // Check if user type is staff (uses middle name as password)
-  const isStaffUserType = (userType) => userType === 'school_staff' || userType === 'academica_employee';
 
   const handleAddUser = async (e) => {
     e.preventDefault();
@@ -225,7 +253,6 @@ export default function ManageUsers() {
       email: user.email,
       contactName: user.contactName,
       userType: user.userType,
-      middleName: user.middleName || '',
       school_id: user.school_id || '',
       schoolName: user.schoolName || '',
       principalName: user.principalName || '',
@@ -245,41 +272,88 @@ export default function ManageUsers() {
     e.preventDefault();
     setEditError('');
 
-    const isStaff = isStaffUserType(editUser.userType);
+    const isConversion = !!pendingTypeChange;
 
-    // Validate password if provided (for admin/superadmin only)
-    if (!isStaff && editPassword) {
+    // Validation for conversion mode
+    if (isConversion) {
+      if (!editUser.email) {
+        setEditError('A valid email address is required');
+        return;
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(editUser.email)) {
+        setEditError('Please enter a valid email address');
+        return;
+      }
+      if (editUser.userType === 'school_staff' && !editUser.school_id) {
+        setEditError('A school must be assigned for School Staff Members');
+        return;
+      }
+      if (editUser.userType === 'academica_employee' && !editUser.office_id) {
+        setEditError('An office must be assigned for Academica Employees');
+        return;
+      }
+      if (!editPassword || editPassword.length < 6) {
+        setEditError('Password is required (min 6 characters)');
+        return;
+      }
       if (editPassword !== editConfirmPassword) {
         setEditError('Passwords do not match');
         return;
       }
-      if (editPassword.length < 6) {
-        setEditError('Password must be at least 6 characters');
-        return;
+    } else {
+      // Validate password if provided
+      if (editPassword) {
+        if (editPassword !== editConfirmPassword) {
+          setEditError('Passwords do not match');
+          return;
+        }
+        if (editPassword.length < 6) {
+          setEditError('Password must be at least 6 characters');
+          return;
+        }
       }
     }
 
     setEditingUser(true);
 
     try {
-      // Update profile (includes middleName for staff users)
-      await adminAPI.updateUser(editUser.id, {
-        email: editUser.email,
-        contactName: editUser.contactName,
-        middleName: isStaff ? editUser.middleName : undefined,
-        school_id: editUser.school_id,
-        schoolName: editUser.schoolName,
-        principalName: editUser.principalName,
-        supervisor: editUser.supervisor,
-        positionTitle: editUser.positionTitle,
-        department: editUser.department,
-        office_id: editUser.office_id,
-        phone: editUser.phone,
-      });
+      if (isConversion) {
+        // Guest conversion — single atomic API call
+        await adminAPI.updateUserType(pendingTypeChange.userId, pendingTypeChange.toType, {
+          email: editUser.email,
+          contactName: editUser.contactName,
+          password: editPassword || undefined,
+          school_id: editUser.school_id || undefined,
+          schoolName: editUser.schoolName || undefined,
+          principalName: editUser.principalName || undefined,
+          supervisor: editUser.supervisor || undefined,
+          positionTitle: editUser.positionTitle || undefined,
+          department: editUser.department || undefined,
+          office_id: editUser.office_id || undefined,
+          phone: editUser.phone || undefined,
+        });
 
-      // Update password if provided (for admin/superadmin only)
-      if (!isStaff && editPassword) {
-        await adminAPI.updateUserPassword(editUser.id, editPassword);
+        setPendingTypeChange(null);
+      } else {
+        // Standard edit — existing flow
+        await adminAPI.updateUser(editUser.id, {
+          email: editUser.email,
+          contactName: editUser.contactName,
+          school_id: editUser.school_id,
+          schoolName: editUser.schoolName,
+          principalName: editUser.principalName,
+          supervisor: editUser.supervisor,
+          positionTitle: editUser.positionTitle,
+          department: editUser.department,
+          office_id: editUser.office_id,
+          phone: editUser.phone,
+        });
+
+        // Update password if provided
+        if (editPassword) {
+          await adminAPI.updateUserPassword(editUser.id, editPassword);
+        }
       }
 
       setShowEditModal(false);
@@ -370,6 +444,23 @@ export default function ManageUsers() {
           </div>
         ) : (
         <>
+          {/* Guest User Alert Banner */}
+          {guestUserCount > 0 && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 mb-6 flex items-start gap-3">
+              <svg className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <div>
+                <p className="text-sm font-semibold text-orange-800">
+                  {guestUserCount} Quick Added user{guestUserCount !== 1 ? 's' : ''} need{guestUserCount === 1 ? 's' : ''} profile completion
+                </p>
+                <p className="text-sm text-orange-700 mt-0.5">
+                  These users were created during order placement with minimal information. Change their user type to assign them a complete profile.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Users Tab Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
@@ -426,7 +517,7 @@ export default function ManageUsers() {
                           {USER_TYPE_LABELS[user.userType] || 'School Staff Member'}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500">{user.email}</p>
+                      <p className="text-sm text-gray-500">{user.email || ''}</p>
                     </div>
                   </div>
                   <div className="text-gray-600 ml-13 text-sm space-y-1">
@@ -636,15 +727,6 @@ export default function ManageUsers() {
                 </select>
               </div>
 
-              {/* Info box for staff users */}
-              {isStaffUserType(newUser.userType) && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-800">
-                    <span className="font-medium">Note:</span> Staff members use their middle name as their password.
-                  </p>
-                </div>
-              )}
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
@@ -657,20 +739,7 @@ export default function ManageUsers() {
                     placeholder="user@example.com"
                   />
                 </div>
-                {isStaffUserType(newUser.userType) ? (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name *</label>
-                    <input
-                      type="text"
-                      value={newUser.middleName}
-                      onChange={(e) => setNewUser({ ...newUser, middleName: e.target.value })}
-                      required
-                      minLength={2}
-                      className="input w-full"
-                      placeholder="Used as password"
-                    />
-                  </div>
-                ) : (
+                {newUser.userType !== 'guest' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
                     <input
@@ -705,6 +774,7 @@ export default function ManageUsers() {
                     <SchoolDropdown
                       value={newUser.school_id}
                       onChange={(schoolId) => setNewUser({ ...newUser, school_id: schoolId })}
+                      onSchoolNameChange={(schoolName) => setNewUser(prev => ({ ...prev, schoolName }))}
                       onPrincipalChange={(principalName) => setNewUser(prev => ({ ...prev, principalName }))}
                     />
                   </div>
@@ -806,9 +876,9 @@ export default function ManageUsers() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-charcoal">Edit User Profile</h2>
+              <h2 className="text-xl font-semibold text-charcoal">{pendingTypeChange ? 'Convert User Profile' : 'Edit User Profile'}</h2>
               <button
-                onClick={() => { setShowEditModal(false); setEditUser(null); }}
+                onClick={() => { setShowEditModal(false); setEditUser(null); setPendingTypeChange(null); }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -824,11 +894,25 @@ export default function ManageUsers() {
                 </div>
               )}
 
-              <div className="bg-gray-50 px-4 py-2 rounded-lg">
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${USER_TYPE_COLORS[editUser.userType] || USER_TYPE_COLORS.school_staff}`}>
-                  {USER_TYPE_LABELS[editUser.userType] || 'School Staff Member'}
-                </span>
-              </div>
+              {/* Conversion info banner */}
+              {pendingTypeChange ? (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-3">
+                  <p className="text-sm text-orange-800">
+                    Converting user type: Complete this user's profile to change them from{' '}
+                    <span className="line-through font-medium">{USER_TYPE_LABELS[pendingTypeChange.fromType] || pendingTypeChange.fromType}</span>
+                    {' → '}
+                    <span className={`font-semibold px-2 py-0.5 rounded-full text-xs border ${USER_TYPE_COLORS[pendingTypeChange.toType] || ''}`}>
+                      {USER_TYPE_LABELS[pendingTypeChange.toType] || pendingTypeChange.toType}
+                    </span>
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-gray-50 px-4 py-2 rounded-lg">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${USER_TYPE_COLORS[editUser.userType] || USER_TYPE_COLORS.school_staff}`}>
+                    {USER_TYPE_LABELS[editUser.userType] || 'School Staff Member'}
+                  </span>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -859,6 +943,7 @@ export default function ManageUsers() {
                     <SchoolDropdown
                       value={editUser.school_id}
                       onChange={(schoolId) => setEditUser({ ...editUser, school_id: schoolId })}
+                      onSchoolNameChange={(schoolName) => setEditUser(prev => ({ ...prev, schoolName }))}
                       onPrincipalChange={(principalName) => setEditUser(prev => ({ ...prev, principalName }))}
                     />
                   </div>
@@ -929,33 +1014,15 @@ export default function ManageUsers() {
                 />
               </div>
 
-              {/* Middle Name Section (for staff users) */}
-              {isStaffUserType(editUser.userType) && (
+              {/* Password Section (visible to superadmins for all user types) */}
+              {isSuperAdmin && (
                 <div className="pt-4 border-t border-gray-200">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-                    <p className="text-sm text-blue-800">
-                      <span className="font-medium">Note:</span> This user's password is their middle name.
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name (Password)</label>
-                    <input
-                      type="text"
-                      value={editUser.middleName}
-                      onChange={(e) => setEditUser({ ...editUser, middleName: e.target.value })}
-                      className="input w-full"
-                      placeholder="User's middle name"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Changing this will update the user's password</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Password Section (for admin/superadmin users - only visible to superadmins) */}
-              {!isStaffUserType(editUser.userType) && isSuperAdmin && (
-                <div className="pt-4 border-t border-gray-200">
-                  <p className="text-sm font-medium text-gray-700 mb-3">Change Password</p>
-                  <p className="text-xs text-gray-500 mb-3">Leave blank to keep current password</p>
+                  <p className="text-sm font-medium text-gray-700 mb-3">
+                    {pendingTypeChange ? 'Set Password *' : 'Change Password'}
+                  </p>
+                  {!pendingTypeChange && (
+                    <p className="text-xs text-gray-500 mb-3">Leave blank to keep current password</p>
+                  )}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
@@ -984,7 +1051,7 @@ export default function ManageUsers() {
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
                 <button
                   type="button"
-                  onClick={() => { setShowEditModal(false); setEditUser(null); }}
+                  onClick={() => { setShowEditModal(false); setEditUser(null); setPendingTypeChange(null); }}
                   className="px-4 py-2 text-gray-700 hover:text-gray-900"
                 >
                   Cancel
@@ -994,7 +1061,12 @@ export default function ManageUsers() {
                   disabled={editingUser}
                   className="btn btn-primary"
                 >
-                  {editingUser ? 'Saving...' : 'Save Changes'}
+                  {editingUser
+                    ? 'Saving...'
+                    : pendingTypeChange
+                      ? `Save & Convert to ${USER_TYPE_LABELS[pendingTypeChange.toType] || pendingTypeChange.toType}`
+                      : 'Save Changes'
+                  }
                 </button>
               </div>
             </form>

@@ -11,6 +11,9 @@ client/dist/
 # Database (will be created fresh on server)
 server/data/*.sqlite
 
+# User uploads
+server/uploads/
+
 # OS files
 .DS_Store
 Thumbs.db

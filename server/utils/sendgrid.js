@@ -517,4 +517,142 @@ Thank you for your order!`;
   });
 }
 
-export default { sendOrderEmail, sendProofEmail };
+/**
+ * Send password reset email
+ */
+export async function sendPasswordResetEmail({ to, contactName, resetUrl }) {
+  const config = getConfig();
+
+  if (!config.apiKey) {
+    console.warn('SENDGRID_API_KEY not configured - password reset email not sent');
+    console.log('Would send password reset email:', { to, contactName, resetUrl });
+    return { success: true, dev: true };
+  }
+
+  initSendGrid();
+
+  try {
+    const { messageId, headers } = await generateEmailHeaders(config);
+
+    const msg = {
+      to,
+      from: {
+        email: config.fromEmail,
+        name: config.fromName
+      },
+      subject: 'Reset Your AcademicaMart Password',
+      text: generatePasswordResetPlainText(contactName, resetUrl, config),
+      html: generatePasswordResetHtml(contactName, resetUrl, config),
+      headers,
+      trackingSettings: {
+        clickTracking: {
+          enable: false,
+          enableText: false
+        }
+      }
+    };
+
+    await sgMail.send(msg);
+    console.log('Password reset email sent to:', to);
+    return { success: true, messageId };
+  } catch (error) {
+    console.error('SendGrid password reset error:', error.response?.body || error.message);
+    return {
+      success: false,
+      error: error.response?.body?.errors?.[0]?.message || error.message
+    };
+  }
+}
+
+function generatePasswordResetPlainText(firstName, resetUrl, config) {
+  return `Hi ${escapeHtml(firstName)},
+
+We received a request to reset your password for your AcademicaMart account.
+
+Click the link below to reset your password:
+${resetUrl}
+
+This link will expire in 1 hour.
+
+If you didn't request this password reset, you can safely ignore this email. Your password will not be changed.
+
+---
+AcademicaMart | ${config.companyAddress}
+Phone: ${config.companyPhone} | ${config.websiteUrl}
+`;
+}
+
+function generatePasswordResetHtml(firstName, resetUrl, config) {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Reset Your Password - AcademicaMart</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: ${systemFontStack}; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f3f4f6;">
+    <tr>
+      <td style="padding: 30px 20px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 640px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 24px 32px; border-bottom: 1px solid #e5e7eb;">
+              <h1 style="margin: 0; font-family: ${systemFontStack}; font-size: 24px; font-weight: 700; color: #111827;">AcademicaMart</h1>
+              <p style="margin: 4px 0 0 0; font-family: ${systemFontStack}; font-size: 14px; color: #6b7280;">Password Reset Request</p>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding: 32px;">
+              <p style="margin: 0 0 16px 0; font-family: ${systemFontStack}; font-size: 15px; line-height: 1.6; color: #374151;">
+                Hi ${escapeHtml(firstName)},
+              </p>
+              <p style="margin: 0 0 24px 0; font-family: ${systemFontStack}; font-size: 15px; line-height: 1.6; color: #374151;">
+                We received a request to reset your password for your AcademicaMart account. Click the button below to choose a new password:
+              </p>
+              <!-- CTA Button -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td style="padding: 0 0 24px 0;" align="center">
+                    <a href="${resetUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff; font-family: ${systemFontStack}; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 6px;">
+                      Reset Password
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 0 0 8px 0; font-family: ${systemFontStack}; font-size: 13px; line-height: 1.6; color: #6b7280;">
+                Or copy and paste this link into your browser:
+              </p>
+              <p style="margin: 0 0 24px 0; font-family: ${systemFontStack}; font-size: 13px; line-height: 1.6; color: #2563eb; word-break: break-all;">
+                ${escapeHtml(resetUrl)}
+              </p>
+              <p style="margin: 0 0 8px 0; font-family: ${systemFontStack}; font-size: 14px; line-height: 1.6; color: #374151; font-weight: 600;">
+                This link expires in 1 hour.
+              </p>
+              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 14px; line-height: 1.6; color: #6b7280;">
+                If you didn't request this password reset, you can safely ignore this email. Your password will not be changed.
+              </p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 24px 32px; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; font-family: ${systemFontStack}; font-size: 11px; color: #9ca3af; line-height: 1.5;">
+                AcademicaMart | ${escapeHtml(config.companyAddress)}<br>
+                Phone: ${escapeHtml(config.companyPhone)} | <a href="${config.websiteUrl}" style="color: #9ca3af;">${config.websiteUrl}</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+export default { sendOrderEmail, sendProofEmail, sendPasswordResetEmail };

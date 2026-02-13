@@ -5,6 +5,7 @@ export default function SchoolDropdown({
   value,
   onChange,
   onPrincipalChange,
+  onSchoolNameChange,
   required = false,
   disabled = false,
   className = '',
@@ -64,6 +65,9 @@ export default function SchoolDropdown({
   const handleSelect = (school) => {
     setSearchTerm(school.name);
     onChange(school.id);
+    if (onSchoolNameChange) {
+      onSchoolNameChange(school.name);
+    }
     if (onPrincipalChange && school.principal_name) {
       onPrincipalChange(school.principal_name);
     }
@@ -76,6 +80,9 @@ export default function SchoolDropdown({
     // Clear selection when user types
     if (value) {
       onChange('');
+      if (onSchoolNameChange) {
+        onSchoolNameChange('');
+      }
       if (onPrincipalChange) {
         onPrincipalChange('');
       }
@@ -85,6 +92,9 @@ export default function SchoolDropdown({
   const handleClear = () => {
     setSearchTerm('');
     onChange('');
+    if (onSchoolNameChange) {
+      onSchoolNameChange('');
+    }
     if (onPrincipalChange) {
       onPrincipalChange('');
     }

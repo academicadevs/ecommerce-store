@@ -62,6 +62,14 @@ export function AuthProvider({ children }) {
     return updatedUser;
   };
 
+  const changePassword = async (data) => {
+    await authAPI.changePassword(data);
+    // Clear the passwordNeedsUpdate flag
+    const updatedUser = { ...user, passwordNeedsUpdate: false };
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    setUser(updatedUser);
+  };
+
   const value = {
     user,
     loading,
@@ -69,6 +77,7 @@ export function AuthProvider({ children }) {
     register,
     logout,
     updateProfile,
+    changePassword,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
     isSuperAdmin: user?.userType === 'superadmin',

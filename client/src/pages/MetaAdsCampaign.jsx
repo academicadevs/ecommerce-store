@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ordersAPI, adminAPI } from '../services/api';
-import SearchableUserSelect from '../components/common/SearchableUserSelect';
+import UserDropdown from '../components/UserDropdown';
 
 const campaignObjectives = [
   { value: 'enrollment', label: 'Student Enrollment', description: 'Drive applications and enrollments for your school' },
@@ -43,53 +43,26 @@ const targetAudienceOptions = [
 ];
 
 export default function MetaAdsCampaign() {
-  const { isAuthenticated, isAdmin, user } = useAuth();
+  const { isAuthenticated, isAdmin, isSuperAdmin, user } = useAuth();
   const navigate = useNavigate();
+  const isAdminUser = isAdmin || isSuperAdmin;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  // Admin: select user on behalf of
-  const [users, setUsers] = useState([]);
-  const [selectedUserId, setSelectedUserId] = useState('');
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [loadingUsers, setLoadingUsers] = useState(false);
+  // Admin on-behalf-of state
+  const [adminOrderMode, setAdminOrderMode] = useState('self');
+  const [orderingAs, setOrderingAs] = useState('school_staff');
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [selectedUserInfo, setSelectedUserInfo] = useState(null);
+  const [onBehalfInfo, setOnBehalfInfo] = useState({ contactName: '', email: '', phone: '', schoolName: '' });
 
-  // Load users list for admins
-  useEffect(() => {
-    if (isAdmin) {
-      loadUsers();
-    }
-  }, [isAdmin]);
-
-  const loadUsers = async () => {
-    setLoadingUsers(true);
-    try {
-      const response = await adminAPI.getUsers();
-      // Filter to only show non-admin users (school staff)
-      const schoolUsers = response.data.users.filter(u =>
-        u.userType === 'school_staff' || u.userType === 'academica_employee'
-      );
-      setUsers(schoolUsers);
-    } catch (err) {
-      console.error('Failed to load users:', err);
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-
-  const handleUserSelect = (userId) => {
-    setSelectedUserId(userId);
-    if (userId) {
-      const user = users.find(u => u.id === userId);
-      setSelectedUser(user);
-    } else {
-      setSelectedUser(null);
-    }
-  };
-
-  // Get the effective user (selected user for admin, or logged-in user)
-  const effectiveUser = isAdmin && selectedUser ? selectedUser : user;
+  // Get the effective user based on admin mode
+  const effectiveUser = isAdminUser && adminOrderMode === 'existing' && selectedUserInfo
+    ? selectedUserInfo
+    : isAdminUser && adminOrderMode === 'new'
+      ? { contactName: onBehalfInfo.contactName, email: onBehalfInfo.email, phone: onBehalfInfo.phone, schoolName: onBehalfInfo.schoolName }
+      : user;
 
   const [formData, setFormData] = useState({
     // Campaign Details
@@ -198,16 +171,48 @@ export default function MetaAdsCampaign() {
         additionalNotes: formData.additionalNotes || null,
       };
 
+      // Determine shipping info and onBehalfOfUserId based on admin mode
+      let submitShippingInfo;
+      let onBehalfOfUserId = null;
+
+      if (isAdminUser && adminOrderMode === 'existing' && selectedUserId) {
+        onBehalfOfUserId = selectedUserId;
+        submitShippingInfo = {
+          schoolName: selectedUserInfo?.schoolName || '',
+          contactName: selectedUserInfo?.contactName || '',
+          positionTitle: selectedUserInfo?.positionTitle || 'Digital Ad Campaign',
+          principalName: selectedUserInfo?.principalName || 'N/A',
+          email: selectedUserInfo?.email || '',
+          phone: selectedUserInfo?.phone || '',
+        };
+      } else if (isAdminUser && adminOrderMode === 'new') {
+        if (!onBehalfInfo.contactName.trim()) {
+          setError('Name is required when creating a new person');
+          setLoading(false);
+          return;
+        }
+        const createRes = await adminAPI.createQuickUser(onBehalfInfo);
+        onBehalfOfUserId = createRes.data.user.id;
+        submitShippingInfo = {
+          schoolName: onBehalfInfo.schoolName || '',
+          contactName: onBehalfInfo.contactName,
+          email: onBehalfInfo.email || '',
+          phone: onBehalfInfo.phone || '',
+        };
+      } else {
+        submitShippingInfo = {
+          schoolName: user?.schoolName || '',
+          contactName: user?.contactName || '',
+          positionTitle: user?.positionTitle || 'Digital Ad Campaign',
+          principalName: user?.principalName || 'N/A',
+          email: user?.email || '',
+          phone: user?.phone || '',
+        };
+      }
+
       await ordersAPI.create({
-        shippingInfo: {
-          schoolName: effectiveUser?.schoolName || '',
-          contactName: effectiveUser?.contactName || '',
-          positionTitle: effectiveUser?.positionTitle || 'Digital Ad Campaign',
-          principalName: effectiveUser?.principalName || 'N/A',
-          email: effectiveUser?.email || '',
-          phone: effectiveUser?.phone || '',
-        },
-        onBehalfOfUserId: isAdmin && selectedUserId ? selectedUserId : undefined,
+        shippingInfo: submitShippingInfo,
+        onBehalfOfUserId,
         notes: formData.additionalNotes || null,
         isCustomRequest: true,
         isMetaAdsCampaign: true,
@@ -291,36 +296,171 @@ export default function MetaAdsCampaign() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Admin: Select User */}
-          {isAdmin && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-charcoal mb-4 flex items-center gap-2">
-                <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-                Create Campaign Request On Behalf Of
-              </h2>
-              <p className="text-sm text-gray-600 mb-4">
-                As an admin, you can create a digital ad campaign request on behalf of an existing user.
-              </p>
-              <SearchableUserSelect
-                users={users}
-                selectedUserId={selectedUserId}
-                onSelect={handleUserSelect}
-                loading={loadingUsers}
-              />
-              {selectedUser && (
-                <div className="mt-4 p-4 bg-white rounded-lg border border-amber-100">
-                  <p className="text-sm font-medium text-charcoal">{selectedUser.contactName}</p>
-                  <p className="text-sm text-gray-600">{selectedUser.schoolName}</p>
-                  <p className="text-sm text-gray-500">{selectedUser.email} {selectedUser.phone && `| ${selectedUser.phone}`}</p>
+          {/* Admin: Order Options */}
+          {isAdminUser ? (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 space-y-4">
+              <div className="text-lg font-semibold text-blue-800">Admin Order Options</div>
+
+              {/* 3-mode radio group */}
+              <div className="flex flex-col gap-2">
+                {[
+                  { value: 'self', label: 'Submit under my account', desc: 'Order linked to your account' },
+                  { value: 'existing', label: 'Submit for existing user', desc: 'Search and select a user' },
+                  { value: 'new', label: 'Submit for new person', desc: 'Create a new user on the fly' },
+                ].map(opt => (
+                  <label
+                    key={opt.value}
+                    className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer border transition-colors ${
+                      adminOrderMode === opt.value
+                        ? 'border-academica-blue bg-white'
+                        : 'border-transparent hover:bg-blue-100/50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="adminOrderMode"
+                      value={opt.value}
+                      checked={adminOrderMode === opt.value}
+                      onChange={() => {
+                        setAdminOrderMode(opt.value);
+                        setOrderingAs('school_staff');
+                        setSelectedUserId(null);
+                        setSelectedUserInfo(null);
+                        setOnBehalfInfo({ contactName: '', email: '', phone: '', schoolName: '' });
+                      }}
+                      className="mt-0.5"
+                    />
+                    <div>
+                      <div className="font-medium text-charcoal text-sm">{opt.label}</div>
+                      <div className="text-xs text-gray-500">{opt.desc}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              {/* User type toggle (for existing/new modes) */}
+              {adminOrderMode !== 'self' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">User Type</label>
+                  <select
+                    value={orderingAs}
+                    onChange={(e) => {
+                      setOrderingAs(e.target.value);
+                      setSelectedUserId(null);
+                      setSelectedUserInfo(null);
+                    }}
+                    className="input"
+                  >
+                    <option value="school_staff">School Staff Member</option>
+                    <option value="academica_employee">Academica Employee (Internal)</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Self mode - show current user summary */}
+              {adminOrderMode === 'self' && (
+                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-academica-blue-50 rounded-full flex items-center justify-center">
+                      <svg className="w-5 h-5 text-academica-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium text-charcoal">{user?.contactName}</p>
+                      <p className="text-sm text-gray-500">{user?.email}</p>
+                      {user?.schoolName && user.schoolName !== 'N/A' && (
+                        <p className="text-sm text-gray-500">{user.schoolName}</p>
+                      )}
+                    </div>
+                    <svg className="w-5 h-5 text-green-500 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+
+              {/* Existing user search */}
+              {adminOrderMode === 'existing' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Search & Select User
+                  </label>
+                  <UserDropdown
+                    value={selectedUserId}
+                    onChange={(userId, userObj) => {
+                      setSelectedUserId(userId);
+                      setSelectedUserInfo(userObj);
+                    }}
+                    onClear={() => {
+                      setSelectedUserId(null);
+                      setSelectedUserInfo(null);
+                    }}
+                    onCreateNew={() => {
+                      setAdminOrderMode('new');
+                      setSelectedUserId(null);
+                      setSelectedUserInfo(null);
+                    }}
+                    userTypeFilter={orderingAs}
+                  />
+                  {selectedUserInfo && (
+                    <div className="mt-2 text-xs text-green-600 flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Selected: {selectedUserInfo.contactName} ({selectedUserInfo.email})
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* New person quick-create fields */}
+              {adminOrderMode === 'new' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                    <input
+                      type="text"
+                      value={onBehalfInfo.contactName}
+                      onChange={(e) => setOnBehalfInfo(prev => ({ ...prev, contactName: e.target.value }))}
+                      className="input"
+                      placeholder="Full name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email (optional)</label>
+                    <input
+                      type="email"
+                      value={onBehalfInfo.email}
+                      onChange={(e) => setOnBehalfInfo(prev => ({ ...prev, email: e.target.value }))}
+                      className="input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone (optional)</label>
+                    <input
+                      type="tel"
+                      value={onBehalfInfo.phone}
+                      onChange={(e) => setOnBehalfInfo(prev => ({ ...prev, phone: e.target.value }))}
+                      className="input"
+                      placeholder="(555) 123-4567"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">School (optional)</label>
+                    <input
+                      type="text"
+                      value={onBehalfInfo.schoolName}
+                      onChange={(e) => setOnBehalfInfo(prev => ({ ...prev, schoolName: e.target.value }))}
+                      className="input"
+                      placeholder="School name"
+                    />
+                  </div>
                 </div>
               )}
             </div>
-          )}
-
-          {/* Show user info for non-admins */}
-          {!isAdmin && (
+          ) : (
+            /* Show user info for non-admins */
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
               <h2 className="text-lg font-semibold text-charcoal mb-2 flex items-center gap-2">
                 <svg className="w-5 h-5 text-academica-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -35,6 +35,9 @@ export const authAPI = {
   login: (data) => api.post('/auth/login', data),
   getMe: () => api.get('/auth/me'),
   updateProfile: (data) => api.put('/auth/profile', data),
+  changePassword: (data) => api.put('/auth/change-password', data),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (data) => api.post('/auth/reset-password', data),
 };
 
 // Products API
@@ -133,7 +136,7 @@ export const adminAPI = {
   updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   updateUserPassword: (id, password) => api.put(`/admin/users/${id}/password`, { password }),
   updateUserRole: (id, role) => api.put(`/admin/users/${id}/role`, { role }),
-  updateUserType: (id, userType) => api.put(`/admin/users/${id}/userType`, { userType }),
+  updateUserType: (id, userType, profileData) => api.put(`/admin/users/${id}/userType`, { userType, profileData }),
   getUserOrders: (userId) => api.get(`/admin/users/${userId}/orders`),
   // Proofs
   getOrderProofs: (orderId) => api.get(`/proofs/order/${orderId}`),

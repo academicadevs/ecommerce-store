@@ -6,10 +6,11 @@ import OfficeDropdown from '../OfficeDropdown';
 export default function InlineUserCreateForm({ onCreated, onCancel, defaultEmail = '' }) {
   const [formData, setFormData] = useState({
     email: defaultEmail,
-    middleName: '',
+    password: '',
     contactName: '',
     userType: 'school_staff',
     school_id: '',
+    schoolName: '',
     principalName: '',
     supervisor: '',
     positionTitle: '',
@@ -19,8 +20,6 @@ export default function InlineUserCreateForm({ onCreated, onCancel, defaultEmail
   });
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
-
-  const isStaffUserType = formData.userType === 'school_staff' || formData.userType === 'academica_employee';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -62,14 +61,6 @@ export default function InlineUserCreateForm({ onCreated, onCancel, defaultEmail
         </select>
       </div>
 
-      {isStaffUserType && (
-        <div className="bg-blue-50 border border-blue-200 rounded px-2 py-1.5">
-          <p className="text-xs text-blue-800">
-            <span className="font-medium">Note:</span> Staff members use their middle name as their password.
-          </p>
-        </div>
-      )}
-
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">Email *</label>
@@ -83,15 +74,15 @@ export default function InlineUserCreateForm({ onCreated, onCancel, defaultEmail
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Middle Name *</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Password *</label>
           <input
-            type="text"
-            value={formData.middleName}
-            onChange={(e) => update('middleName', e.target.value)}
+            type="password"
+            value={formData.password}
+            onChange={(e) => update('password', e.target.value)}
             required
-            minLength={2}
+            minLength={6}
             className="input w-full text-sm"
-            placeholder="Used as password"
+            placeholder="Min 6 characters"
           />
         </div>
       </div>
@@ -115,6 +106,7 @@ export default function InlineUserCreateForm({ onCreated, onCancel, defaultEmail
             <SchoolDropdown
               value={formData.school_id}
               onChange={(schoolId) => update('school_id', schoolId)}
+              onSchoolNameChange={(schoolName) => update('schoolName', schoolName)}
               onPrincipalChange={(principalName) => update('principalName', principalName)}
             />
           </div>

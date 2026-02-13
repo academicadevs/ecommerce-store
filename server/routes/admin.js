@@ -93,6 +93,7 @@ router.get('/stats', (req, res) => {
       totalOrders: Order.count(),
       activeOrders: Order.activeCount(),
       totalUsers: User.count(),
+      guestUserCount: User.countByType('guest'),
       totalRevenue: Order.getTotalRevenue(),
       recentOrders: Order.getRecentOrders(5)
     };
@@ -788,9 +789,9 @@ router.put('/users/:id/role', (req, res) => {
   }
 });
 
-router.put('/users/:id/userType', (req, res) => {
+router.put('/users/:id/userType', async (req, res) => {
   try {
-    const { userType } = req.body;
+    const { userType, profileData } = req.body;
 
     // Only super admins can change user types
     if (req.user.userType !== 'superadmin') {
@@ -802,8 +803,81 @@ router.put('/users/:id/userType', (req, res) => {
     }
 
     const typeUser = User.findById(req.params.id);
-    const previousType = typeUser?.userType;
+    if (!typeUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const previousType = typeUser.userType;
 
+    // Guest conversion — require profileData with validation
+    if (previousType === 'guest' && userType !== 'guest') {
+      if (!profileData) {
+        return res.status(400).json({ error: 'Profile data is required when converting from Quick Added' });
+      }
+
+      const { email, contactName, password, school_id, schoolName, principalName, supervisor, positionTitle, department, office_id, phone } = profileData;
+
+      // Validate email
+      if (!email) {
+        return res.status(400).json({ error: 'A valid email address is required' });
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Please enter a valid email address' });
+      }
+
+      // Check email uniqueness (excluding current user)
+      if (email !== typeUser.email) {
+        const existing = User.findByEmail(email);
+        if (existing) {
+          return res.status(400).json({ error: 'A user with this email already exists' });
+        }
+      }
+
+      // All non-guest types require a password
+      if (!password || password.length < 6) {
+        return res.status(400).json({ error: 'Password is required (min 6 characters)' });
+      }
+
+      // Role-specific validation
+      if (userType === 'school_staff') {
+        if (!school_id) {
+          return res.status(400).json({ error: 'A school must be assigned for School Staff Members' });
+        }
+      }
+
+      if (userType === 'academica_employee') {
+        if (!office_id) {
+          return res.status(400).json({ error: 'An office must be assigned for Academica Employees' });
+        }
+      }
+
+      // Update profile
+      User.updateProfile(req.params.id, {
+        contactName: contactName || typeUser.contactName,
+        positionTitle,
+        department,
+        schoolName: schoolName || typeUser.schoolName,
+        principalName,
+        phone,
+        email,
+        school_id: school_id || null,
+        supervisor,
+        office_id: office_id || null,
+      });
+
+      // Update password
+      await User.updatePassword(req.params.id, password);
+
+      // Update userType and sync role
+      User.updateUserType(req.params.id, userType);
+      const newRole = (userType === 'admin' || userType === 'superadmin') ? 'admin' : 'user';
+      User.updateRole(req.params.id, newRole);
+
+      logAudit(req, { action: 'user.type_change', category: 'users', targetId: req.params.id, targetType: 'user', details: { userType, previousType, contactName: contactName || typeUser.contactName, email, conversion: true } });
+      return res.json({ message: 'User converted successfully' });
+    }
+
+    // Non-guest type changes — proceed as before
     User.updateUserType(req.params.id, userType);
 
     // Sync role with user type - admin/superadmin userType gets admin role
@@ -852,25 +926,20 @@ router.post('/users/quick', async (req, res) => {
 // Create a new user (admin only)
 router.post('/users', async (req, res) => {
   try {
-    const { email, password, userType, contactName, middleName, positionTitle, department, schoolName, principalName, phone, school_id, supervisor, office_id } = req.body;
+    const { email, password, userType, contactName, positionTitle, department, schoolName, principalName, phone, school_id, supervisor, office_id } = req.body;
 
     const validUserTypes = ['school_staff', 'academica_employee', 'admin', 'superadmin', 'guest'];
     const finalUserType = validUserTypes.includes(userType) ? userType : 'school_staff';
-    const isStaffUser = finalUserType === 'school_staff' || finalUserType === 'academica_employee';
 
     // Validate required fields
     if (!email || !contactName) {
       return res.status(400).json({ error: 'Email and contact name are required' });
     }
 
-    // For staff users, require middle name; for admin users, require password
-    if (isStaffUser) {
-      if (!middleName || middleName.trim().length < 2) {
-        return res.status(400).json({ error: 'Middle name is required for staff users (min 2 characters)' });
-      }
-    } else {
+    // All non-guest types require a password
+    if (finalUserType !== 'guest') {
       if (!password || password.length < 6) {
-        return res.status(400).json({ error: 'Password is required for admin users (min 6 characters)' });
+        return res.status(400).json({ error: 'Password is required (min 6 characters)' });
       }
     }
 
@@ -890,7 +959,6 @@ router.post('/users', async (req, res) => {
       password,
       userType: finalUserType,
       contactName,
-      middleName,
       positionTitle,
       department,
       schoolName,
@@ -927,7 +995,7 @@ router.put('/users/:id', async (req, res) => {
       return res.status(403).json({ error: 'You do not have permission to edit super admin profiles' });
     }
 
-    const { contactName, middleName, positionTitle, department, schoolName, principalName, phone, email, school_id, supervisor, office_id } = req.body;
+    const { contactName, positionTitle, department, schoolName, principalName, phone, email, school_id, supervisor, office_id } = req.body;
 
     // Check if email is being changed and if it's already taken
     if (email && email !== targetUser.email) {
@@ -937,18 +1005,8 @@ router.put('/users/:id', async (req, res) => {
       }
     }
 
-    // For staff users, if middle name is changed, update password too
-    const isStaffUser = targetUser.userType === 'school_staff' || targetUser.userType === 'academica_employee';
-    if (isStaffUser && middleName && middleName !== targetUser.middleName) {
-      if (middleName.trim().length < 2) {
-        return res.status(400).json({ error: 'Middle name must be at least 2 characters' });
-      }
-      await User.updateMiddleNameAndPassword(req.params.id, middleName);
-    }
-
     const updatedUser = User.updateProfile(req.params.id, {
       contactName,
-      middleName: isStaffUser ? middleName : targetUser.middleName,
       positionTitle,
       department,
       schoolName,
@@ -961,7 +1019,7 @@ router.put('/users/:id', async (req, res) => {
     });
 
     // Compute before/after diff for changed fields
-    const userFields = { contactName, middleName, positionTitle, department, schoolName, principalName, phone, email, supervisor };
+    const userFields = { contactName, positionTitle, department, schoolName, principalName, phone, email, supervisor };
     const changes = [];
     for (const [key, newVal] of Object.entries(userFields)) {
       if (newVal !== undefined && newVal !== targetUser[key]) {
@@ -976,7 +1034,7 @@ router.put('/users/:id', async (req, res) => {
   }
 });
 
-// Reset user password (only for admin/superadmin users, and only superadmins can do this)
+// Reset user password (superadmins only, works for ALL user types)
 router.put('/users/:id/password', async (req, res) => {
   try {
     const targetUser = User.findById(req.params.id);
@@ -984,15 +1042,9 @@ router.put('/users/:id/password', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Staff users don't use this endpoint - their password is their middle name
-    const isStaffUser = targetUser.userType === 'school_staff' || targetUser.userType === 'academica_employee';
-    if (isStaffUser) {
-      return res.status(400).json({ error: 'Staff user passwords are managed through their middle name in profile settings' });
-    }
-
-    // Only superadmins can change admin/superadmin passwords
+    // Only superadmins can change passwords
     if (req.user.userType !== 'superadmin') {
-      return res.status(403).json({ error: 'Only super admins can change admin passwords' });
+      return res.status(403).json({ error: 'Only super admins can change user passwords' });
     }
 
     const { password } = req.body;

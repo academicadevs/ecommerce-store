@@ -34,7 +34,7 @@ export default function Register() {
   const [formData, setFormData] = useState({
     userType: '',
     email: '',
-    middleName: '',
+    password: '',
     contactName: '',
     positionTitle: '',
     // School staff fields
@@ -65,8 +65,8 @@ export default function Register() {
     e.preventDefault();
     setError('');
 
-    if (!formData.middleName || formData.middleName.trim().length < 2) {
-      setError('Middle name is required and must be at least 2 characters');
+    if (!formData.password || formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
       return;
     }
 
@@ -74,10 +74,6 @@ export default function Register() {
     if (formData.userType === 'school_staff') {
       if (!formData.school_id) {
         setError('Please select a school');
-        return;
-      }
-      if (!formData.supervisor || !formData.supervisor.trim()) {
-        setError('Supervisor name is required');
         return;
       }
     }
@@ -96,7 +92,7 @@ export default function Register() {
       await register({
         userType: formData.userType,
         email: formData.email,
-        middleName: formData.middleName.trim(),
+        password: formData.password,
         contactName: formData.contactName,
         positionTitle: formData.positionTitle,
         school_id: formData.school_id,
@@ -185,7 +181,7 @@ export default function Register() {
                 {/* Position/Title */}
                 <div>
                   <label htmlFor="positionTitle" className="block text-sm font-medium text-gray-700 mb-1">
-                    Position/Title *
+                    Position/Title
                   </label>
                   <input
                     type="text"
@@ -193,7 +189,6 @@ export default function Register() {
                     name="positionTitle"
                     value={formData.positionTitle}
                     onChange={handleChange}
-                    required
                     className="input"
                     placeholder={formData.userType === 'academica_employee' ? 'Marketing Manager' : 'Marketing Coordinator'}
                   />
@@ -209,6 +204,7 @@ export default function Register() {
                       <SchoolDropdown
                         value={formData.school_id}
                         onChange={(schoolId) => setFormData({ ...formData, school_id: schoolId })}
+                        onSchoolNameChange={(schoolName) => setFormData(prev => ({ ...prev, schoolName }))}
                         onPrincipalChange={(principalName) => setFormData(prev => ({ ...prev, principalName }))}
                         required
                       />
@@ -223,7 +219,7 @@ export default function Register() {
 
                     <div>
                       <label htmlFor="supervisor" className="block text-sm font-medium text-gray-700 mb-1">
-                        Supervisor's Name *
+                        Supervisor's Name
                       </label>
                       <input
                         type="text"
@@ -231,7 +227,6 @@ export default function Register() {
                         name="supervisor"
                         value={formData.supervisor}
                         onChange={handleChange}
-                        required
                         className="input"
                         placeholder="Your direct supervisor's name"
                       />
@@ -304,34 +299,23 @@ export default function Register() {
                   />
                 </div>
 
-                {/* Middle Name - Used as Password */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                      <p className="text-sm font-medium text-blue-800">Your middle name is your password</p>
-                      <p className="text-xs text-blue-600 mt-1">When signing in, use your middle name as your password. This helps keep things simple and secure.</p>
-                    </div>
-                  </div>
-                </div>
-
+                {/* Password */}
                 <div>
-                  <label htmlFor="middleName" className="block text-sm font-medium text-gray-700 mb-1">
-                    Middle Name *
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                    Password *
                   </label>
                   <input
-                    type="text"
-                    id="middleName"
-                    name="middleName"
-                    value={formData.middleName}
+                    type="password"
+                    id="password"
+                    name="password"
+                    value={formData.password}
                     onChange={handleChange}
                     required
+                    minLength={6}
                     className="input"
-                    placeholder="Your middle name (this will be your password)"
+                    placeholder="Min 6 characters"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Min 2 characters. Remember this - you'll use it to sign in.</p>
+                  <p className="text-xs text-gray-500 mt-1">Must be at least 6 characters.</p>
                 </div>
 
                 <button

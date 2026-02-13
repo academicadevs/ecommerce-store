@@ -219,6 +219,7 @@ export default function Checkout() {
     if (selectedUser) {
       // Update search field to show selected user
       setUserSearch(selectedUser.contactName + (selectedUser.schoolName ? ` - ${selectedUser.schoolName}` : selectedUser.department ? ` - ${selectedUser.department}` : ''));
+      const isPlaceholderEmail = selectedUser.email?.includes('@placeholder.loc');
       setFormData({
         school_id: selectedUser.school_id || '',
         schoolName: selectedUser.schoolName || '',
@@ -228,7 +229,7 @@ export default function Checkout() {
         principalName: selectedUser.principalName || '',
         supervisor: selectedUser.supervisor || '',
         office_id: selectedUser.office_id || '',
-        email: selectedUser.email || '',
+        email: isPlaceholderEmail ? '' : (selectedUser.email || ''),
         phone: selectedUser.phone || '',
         additionalEmails: '',
         notes: formData.notes,
@@ -593,9 +594,9 @@ export default function Checkout() {
                       <SchoolDropdown
                         value={formData.school_id}
                         onChange={(schoolId) => {
-                          // Also look up school name from the dropdown's list
                           setFormData(prev => ({ ...prev, school_id: schoolId }));
                         }}
+                        onSchoolNameChange={(schoolName) => setFormData(prev => ({ ...prev, schoolName }))}
                         onPrincipalChange={(principalName) => setFormData(prev => ({ ...prev, principalName }))}
                         required={!adminNewMode}
                       />
@@ -610,7 +611,7 @@ export default function Checkout() {
 
                     <div>
                       <label htmlFor="supervisor" className="block text-sm font-medium text-gray-700 mb-1">
-                        Supervisor's Name *
+                        Supervisor's Name
                       </label>
                       <input
                         type="text"
@@ -618,7 +619,6 @@ export default function Checkout() {
                         name="supervisor"
                         value={formData.supervisor}
                         onChange={handleChange}
-                        required={!adminNewMode}
                         className="input"
                         placeholder="Your direct supervisor's name"
                       />
@@ -643,7 +643,7 @@ export default function Checkout() {
                   </div>
                   <div>
                     <label htmlFor={isAcademicaEmployee ? 'department' : 'positionTitle'} className="block text-sm font-medium text-gray-700 mb-1">
-                      {isAcademicaEmployee ? 'Department *' : 'Position/Title *'}
+                      {isAcademicaEmployee ? 'Department' : 'Position/Title'}
                     </label>
                     <input
                       type="text"
@@ -651,7 +651,6 @@ export default function Checkout() {
                       name={isAcademicaEmployee ? 'department' : 'positionTitle'}
                       value={isAcademicaEmployee ? formData.department : formData.positionTitle}
                       onChange={handleChange}
-                      required={!adminNewMode}
                       className="input"
                       placeholder={isAcademicaEmployee ? 'Marketing, HR, Finance...' : 'Marketing Coordinator'}
                     />
@@ -675,7 +674,7 @@ export default function Checkout() {
                   </div>
                   <div>
                     <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone *
+                      Phone
                     </label>
                     <input
                       type="tel"
@@ -683,7 +682,6 @@ export default function Checkout() {
                       name="phone"
                       value={formData.phone}
                       onChange={handleChange}
-                      required={!adminNewMode}
                       className="input"
                     />
                   </div>

@@ -23,7 +23,7 @@ export function initializeDatabase() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
-      email TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE,
       password TEXT NOT NULL,
       userType TEXT DEFAULT 'school_staff',
       contactName TEXT NOT NULL,
@@ -459,6 +459,115 @@ export function initializeDatabase() {
     }
   } catch (e) {
     console.error('Error syncing product overviews:', e.message);
+  }
+
+  // Migration: Add password reset and password migration columns
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN password_reset_token TEXT`);
+    console.log('Added password_reset_token column to users table');
+  } catch (e) {
+    // Column already exists
+  }
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN password_reset_expires TEXT`);
+    console.log('Added password_reset_expires column to users table');
+  } catch (e) {
+    // Column already exists
+  }
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN password_needs_update INTEGER DEFAULT 0`);
+    console.log('Added password_needs_update column to users table');
+  } catch (e) {
+    // Column already exists
+  }
+
+  // Index for password reset token lookups
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(password_reset_token)`);
+  } catch (e) {
+    // Index might already exist
+  }
+
+  // Data migration: Flag existing staff users who have a non-empty middleName for password update
+  try {
+    const result = db.prepare(`
+      UPDATE users SET password_needs_update = 1
+      WHERE (userType = 'school_staff' OR userType = 'academica_employee')
+        AND middleName IS NOT NULL AND middleName != ''
+        AND password_needs_update = 0
+    `).run();
+    if (result.changes > 0) {
+      console.log(`Flagged ${result.changes} staff users for password update`);
+    }
+  } catch (e) {
+    console.error('Error flagging staff users for password update:', e.message);
+  }
+
+  // Migration: Make email nullable for guest users (remove NOT NULL constraint)
+  // SQLite requires table rebuild to change column constraints
+  try {
+    const emailColInfo = db.prepare(`PRAGMA table_info(users)`).all();
+    const emailCol = emailColInfo.find(c => c.name === 'email');
+    if (emailCol && emailCol.notnull === 1) {
+      console.log('Migrating users table: making email nullable...');
+      db.exec('PRAGMA foreign_keys=OFF');
+      db.exec('BEGIN TRANSACTION');
+      try {
+        db.exec(`
+          CREATE TABLE users_new (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE,
+            password TEXT NOT NULL,
+            userType TEXT DEFAULT 'school_staff',
+            contactName TEXT NOT NULL,
+            middleName TEXT,
+            positionTitle TEXT,
+            department TEXT,
+            schoolName TEXT,
+            principalName TEXT,
+            phone TEXT,
+            address TEXT,
+            role TEXT DEFAULT 'user',
+            createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+            supervisor TEXT,
+            school_id TEXT,
+            office_id TEXT,
+            password_reset_token TEXT,
+            password_reset_expires TEXT,
+            password_needs_update INTEGER DEFAULT 0
+          )
+        `);
+        db.exec(`INSERT INTO users_new SELECT id, email, password, userType, contactName, middleName, positionTitle, department, schoolName, principalName, phone, address, role, createdAt, supervisor, school_id, office_id, password_reset_token, password_reset_expires, password_needs_update FROM users`);
+        db.exec(`DROP TABLE users`);
+        db.exec(`ALTER TABLE users_new RENAME TO users`);
+        // Recreate indexes
+        db.exec(`CREATE INDEX IF NOT EXISTS idx_users_school ON users(school_id)`);
+        db.exec(`CREATE INDEX IF NOT EXISTS idx_users_office ON users(office_id)`);
+        db.exec(`CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(password_reset_token)`);
+        db.exec('COMMIT');
+        console.log('Users table migrated: email is now nullable');
+      } catch (migrationErr) {
+        db.exec('ROLLBACK');
+        throw migrationErr;
+      } finally {
+        db.exec('PRAGMA foreign_keys=ON');
+      }
+    }
+  } catch (e) {
+    console.error('Error migrating email column:', e.message);
+  }
+
+  // Clean up existing placeholder emails — set to NULL
+  try {
+    const result = db.prepare(`
+      UPDATE users SET email = NULL
+      WHERE email LIKE '%@placeholder.local'
+    `).run();
+    if (result.changes > 0) {
+      console.log(`Cleared ${result.changes} placeholder emails`);
+    }
+  } catch (e) {
+    console.error('Error clearing placeholder emails:', e.message);
   }
 
   // Audit log table for superadmin activity tracking
