@@ -18,8 +18,6 @@ function getConfig() {
     fromEmail: process.env.SENDGRID_FROM_EMAIL || 'orders@academicamart.com',
     fromName: process.env.SENDGRID_FROM_NAME || 'Academica Design Dept.',
     inboundDomain: process.env.SENDGRID_INBOUND_DOMAIN || 'parse.academicamart.com',
-    companyAddress: '8670 W. Cheyenne Ave #120, Las Vegas, NV 89129',
-    companyPhone: '(702) 727-6262',
     websiteUrl: 'https://academicamart.com'
   };
 }
@@ -212,10 +210,9 @@ function generatePlainTextEmail(body, order, config, includeOrderDetails = true)
     text += '═══════════════════════════════════════════════════════════════\n\n';
   }
 
-  // Add footer with company info (CAN-SPAM compliance)
+  // Add footer with company info
   text += '---\n';
-  text += `AcademicaMart | ${config.companyAddress}\n`;
-  text += `Phone: ${config.companyPhone} | ${config.websiteUrl}\n`;
+  text += `AcademicaMart | ${config.websiteUrl}\n`;
   text += 'To stop receiving order updates, reply with "Unsubscribe" in the subject.\n';
 
   return text;
@@ -245,8 +242,7 @@ function generateHtmlEmail(body, order, config, includeOrderDetails = true) {
           This email is regarding your order with AcademicaMart. <strong>Simply reply to this email to respond.</strong>
         </p>
         <p style="margin: 12px 0 0 0; font-family: ${systemFontStack}; font-size: 11px; color: #9ca3af; line-height: 1.5;">
-          AcademicaMart | ${escapeHtml(config.companyAddress)}<br>
-          Phone: ${escapeHtml(config.companyPhone)} | <a href="${config.websiteUrl}" style="color: #9ca3af;">${config.websiteUrl}</a><br>
+          AcademicaMart | <a href="${config.websiteUrl}" style="color: #9ca3af;">${config.websiteUrl}</a><br>
           <a href="mailto:${config.fromEmail}?subject=Unsubscribe" style="color: #9ca3af;">Unsubscribe from order updates</a>
         </p>
       </td>
@@ -577,8 +573,7 @@ This link will expire in 1 hour.
 If you didn't request this password reset, you can safely ignore this email. Your password will not be changed.
 
 ---
-AcademicaMart | ${config.companyAddress}
-Phone: ${config.companyPhone} | ${config.websiteUrl}
+AcademicaMart | ${config.websiteUrl}
 `;
 }
 
@@ -641,8 +636,7 @@ function generatePasswordResetHtml(firstName, resetUrl, config) {
           <tr>
             <td style="background-color: #f9fafb; padding: 24px 32px; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
               <p style="margin: 0; font-family: ${systemFontStack}; font-size: 11px; color: #9ca3af; line-height: 1.5;">
-                AcademicaMart | ${escapeHtml(config.companyAddress)}<br>
-                Phone: ${escapeHtml(config.companyPhone)} | <a href="${config.websiteUrl}" style="color: #9ca3af;">${config.websiteUrl}</a>
+                AcademicaMart | <a href="${config.websiteUrl}" style="color: #9ca3af;">${config.websiteUrl}</a>
               </p>
             </td>
           </tr>
