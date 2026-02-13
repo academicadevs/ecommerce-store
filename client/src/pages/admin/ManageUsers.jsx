@@ -48,6 +48,13 @@ const USER_TYPE_COLORS = {
   guest: 'bg-orange-100 text-orange-800 border-orange-200',
 };
 
+const USER_STATUS_BADGES = {
+  active: { label: 'Active', className: 'bg-green-100 text-green-700 border-green-200' },
+  archived: { label: 'Archived', className: 'bg-gray-100 text-gray-600 border-gray-300' },
+  blocked: { label: 'Blocked', className: 'bg-red-100 text-red-700 border-red-200' },
+  deleted: { label: 'Deleted', className: 'bg-gray-200 text-gray-500 border-gray-300' },
+};
+
 export default function ManageUsers() {
   const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('users'); // 'users', 'schools', or 'offices'
@@ -90,11 +97,23 @@ export default function ManageUsers() {
   // Guest conversion state
   const [pendingTypeChange, setPendingTypeChange] = useState(null); // { userId, fromType, toType }
 
+  // Status management state
+  const [statusFilter, setStatusFilter] = useState('active');
+  const [actionMenuUser, setActionMenuUser] = useState(null); // user id for open action menu
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [blockTarget, setBlockTarget] = useState(null); // user object
+  const [blockReason, setBlockReason] = useState('');
+  const [blockError, setBlockError] = useState('');
+  const [confirmAction, setConfirmAction] = useState(null); // { type, user, message }
+
   const isSuperAdmin = currentUser?.userType === 'superadmin';
   const guestUserCount = users.filter(u => u.userType === 'guest').length;
 
-  // Filter users based on search query
+  // Filter users based on search query and status filter
   const filteredUsers = users.filter(user => {
+    // Status filter
+    if (statusFilter !== 'all' && user.status !== statusFilter) return false;
+
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -245,6 +264,80 @@ export default function ManageUsers() {
     // Admins cannot edit superadmins
     if (user.userType === 'superadmin') return false;
     return true;
+  };
+
+  const handleArchiveUser = (user) => {
+    setConfirmAction({
+      type: 'archive',
+      user,
+      message: `Archive ${user.contactName}? They will no longer be able to log in.`
+    });
+    setActionMenuUser(null);
+  };
+
+  const handleBlockUser = (user) => {
+    setBlockTarget(user);
+    setBlockReason('');
+    setBlockError('');
+    setShowBlockModal(true);
+    setActionMenuUser(null);
+  };
+
+  const handleReactivateUser = (user) => {
+    setConfirmAction({
+      type: 'reactivate',
+      user,
+      message: `Reactivate ${user.contactName}? They will be able to log in again.`
+    });
+    setActionMenuUser(null);
+  };
+
+  const handleDeleteUser = (user) => {
+    setConfirmAction({
+      type: 'delete',
+      user,
+      message: `Permanently delete ${user.contactName}? This action cannot be undone. The user will be permanently removed but their orders will be preserved.`
+    });
+    setActionMenuUser(null);
+  };
+
+  const executeConfirmAction = async () => {
+    if (!confirmAction) return;
+    const { type, user } = confirmAction;
+
+    try {
+      if (type === 'archive') {
+        await adminAPI.updateUserStatus(user.id, { status: 'archived' });
+      } else if (type === 'reactivate') {
+        await adminAPI.updateUserStatus(user.id, { status: 'active' });
+      } else if (type === 'delete') {
+        await adminAPI.deleteUser(user.id);
+      }
+      setConfirmAction(null);
+      loadUsers();
+    } catch (error) {
+      console.error(`Failed to ${type} user:`, error);
+      alert(error.response?.data?.error || `Failed to ${type} user`);
+    }
+  };
+
+  const executeBlockUser = async () => {
+    if (!blockTarget) return;
+    if (!blockReason || blockReason.trim().length < 10) {
+      setBlockError('Block reason must be at least 10 characters');
+      return;
+    }
+
+    try {
+      await adminAPI.updateUserStatus(blockTarget.id, { status: 'blocked', blockReason: blockReason.trim() });
+      setShowBlockModal(false);
+      setBlockTarget(null);
+      setBlockReason('');
+      loadUsers();
+    } catch (error) {
+      console.error('Failed to block user:', error);
+      setBlockError(error.response?.data?.error || 'Failed to block user');
+    }
   };
 
   const handleOpenEditModal = (user) => {
@@ -461,6 +554,26 @@ export default function ManageUsers() {
             </div>
           )}
 
+          {/* Status Filter Tabs */}
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            {['active', 'archived', 'blocked', ...(isSuperAdmin ? ['all'] : [])].map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  statusFilter === s
+                    ? 'bg-academica-blue text-white border-academica-blue'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                {s === 'all' ? 'All' : USER_STATUS_BADGES[s]?.label || s}
+                <span className="ml-1 text-xs opacity-75">
+                  ({s === 'all' ? users.length : users.filter(u => u.status === s).length})
+                </span>
+              </button>
+            ))}
+          </div>
+
           {/* Users Tab Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
@@ -516,6 +629,21 @@ export default function ManageUsers() {
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${USER_TYPE_COLORS[user.userType] || USER_TYPE_COLORS.school_staff}`}>
                           {USER_TYPE_LABELS[user.userType] || 'School Staff Member'}
                         </span>
+                        {user.status && user.status !== 'active' && (
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${USER_STATUS_BADGES[user.status]?.className || ''}`}>
+                            {user.status === 'blocked' && (
+                              <svg className="w-3 h-3 inline mr-0.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                              </svg>
+                            )}
+                            {user.status === 'archived' && (
+                              <svg className="w-3 h-3 inline mr-0.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" />
+                              </svg>
+                            )}
+                            {USER_STATUS_BADGES[user.status]?.label || user.status}
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-gray-500">{user.email || ''}</p>
                     </div>
@@ -592,6 +720,76 @@ export default function ManageUsers() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
+                  )}
+
+                  {/* Status Action Menu */}
+                  {canEditUser(user) && user.id !== currentUser?.id && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setActionMenuUser(actionMenuUser === user.id ? null : user.id)}
+                        className="px-2 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                        title="More actions"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
+                      </button>
+
+                      {actionMenuUser === user.id && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setActionMenuUser(null)} />
+                          <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                            {(user.status === 'active') && (
+                              <>
+                                <button
+                                  onClick={() => handleArchiveUser(user)}
+                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                >
+                                  <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" />
+                                  </svg>
+                                  Archive
+                                </button>
+                                <button
+                                  onClick={() => handleBlockUser(user)}
+                                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                >
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                  </svg>
+                                  Block
+                                </button>
+                              </>
+                            )}
+                            {(user.status === 'archived' || user.status === 'blocked') && (
+                              <button
+                                onClick={() => handleReactivateUser(user)}
+                                className="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50 flex items-center gap-2"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Reactivate
+                              </button>
+                            )}
+                            {isSuperAdmin && user.userType !== 'superadmin' && (
+                              <>
+                                <div className="border-t border-gray-100 my-1" />
+                                <button
+                                  onClick={() => handleDeleteUser(user)}
+                                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                >
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                  Delete Permanently
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -1070,6 +1268,125 @@ export default function ManageUsers() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Block User Modal */}
+      {showBlockModal && blockTarget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-charcoal">Block User</h2>
+              <button
+                onClick={() => { setShowBlockModal(false); setBlockTarget(null); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-600">
+                Blocking <span className="font-semibold">{blockTarget.contactName}</span> will prevent them from logging in. The reason you provide will be displayed to the user when they attempt to sign in.
+              </p>
+
+              {blockError && (
+                <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
+                  {blockError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Reason for blocking (shown to user at login) *
+                </label>
+                <textarea
+                  value={blockReason}
+                  onChange={(e) => { setBlockReason(e.target.value); setBlockError(''); }}
+                  rows={3}
+                  className="input w-full"
+                  placeholder="Explain why this account is being blocked (minimum 10 characters)..."
+                />
+                <p className="text-xs text-gray-400 mt-1">{blockReason.length}/10 minimum characters</p>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowBlockModal(false); setBlockTarget(null); }}
+                  className="px-4 py-2 text-gray-700 hover:text-gray-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={executeBlockUser}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium text-sm"
+                >
+                  Block User
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Dialog */}
+      {confirmAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6 space-y-4">
+              <div className="flex items-start gap-3">
+                {confirmAction.type === 'delete' ? (
+                  <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </div>
+                ) : confirmAction.type === 'archive' ? (
+                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" />
+                    </svg>
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-lg font-semibold text-charcoal">
+                    {confirmAction.type === 'delete' ? 'Delete User' : confirmAction.type === 'archive' ? 'Archive User' : 'Reactivate User'}
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">{confirmAction.message}</p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmAction(null)}
+                  className="px-4 py-2 text-gray-700 hover:text-gray-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={executeConfirmAction}
+                  className={`px-4 py-2 rounded-lg font-medium text-sm text-white ${
+                    confirmAction.type === 'delete' ? 'bg-red-600 hover:bg-red-700' :
+                    confirmAction.type === 'archive' ? 'bg-gray-600 hover:bg-gray-700' :
+                    'bg-green-600 hover:bg-green-700'
+                  }`}
+                >
+                  {confirmAction.type === 'delete' ? 'Delete Permanently' : confirmAction.type === 'archive' ? 'Archive' : 'Reactivate'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

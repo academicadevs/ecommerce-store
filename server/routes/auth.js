@@ -112,10 +112,30 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    // Check user status before password validation
+    if (user.status === 'deleted') {
+      // Don't reveal that account existed
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
     // Validate password
     const isValid = await User.validatePassword(password, user.password);
     if (!isValid) {
       return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Check user status after password validation (for informative messages)
+    if (user.status === 'archived') {
+      return res.status(403).json({
+        error: 'Your account has been deactivated. Please contact an administrator.',
+        code: 'ACCOUNT_ARCHIVED'
+      });
+    }
+    if (user.status === 'blocked') {
+      return res.status(403).json({
+        error: user.block_reason || 'Your account has been blocked.',
+        code: 'ACCOUNT_BLOCKED'
+      });
     }
 
     // Generate token
@@ -156,7 +176,7 @@ router.post('/login', async (req, res) => {
 
 // Get current user
 router.get('/me', authenticate, (req, res) => {
-  const { password, password_reset_token, password_reset_expires, ...user } = req.user;
+  const { password, password_reset_token, password_reset_expires, block_reason, ...user } = req.user;
   user.passwordNeedsUpdate = !!user.password_needs_update;
   res.json({ user });
 });

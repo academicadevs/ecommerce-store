@@ -762,7 +762,15 @@ router.get('/admins', (req, res) => {
 // User management
 router.get('/users', (req, res) => {
   try {
-    const users = User.getAll();
+    const { status, includeDeleted } = req.query;
+    const showDeleted = includeDeleted === 'true' && req.user.userType === 'superadmin';
+    let users = User.getAll(showDeleted);
+
+    // Filter by status if provided
+    if (status && status !== 'all') {
+      users = users.filter(u => u.status === status);
+    }
+
     res.json({ users });
   } catch (error) {
     console.error('Error fetching users:', error);
@@ -1073,6 +1081,97 @@ router.get('/users/:id/orders', (req, res) => {
   } catch (error) {
     console.error('Error fetching user orders:', error);
     res.status(500).json({ error: 'Failed to fetch user orders' });
+  }
+});
+
+// Update user status (archive, block, reactivate) - admin + superadmin
+router.put('/users/:id/status', (req, res) => {
+  try {
+    const { status, blockReason } = req.body;
+
+    if (!status || !['active', 'archived', 'blocked'].includes(status)) {
+      return res.status(400).json({ error: 'Valid status is required (active, archived, blocked)' });
+    }
+
+    if (status === 'blocked' && (!blockReason || blockReason.trim().length < 10)) {
+      return res.status(400).json({ error: 'A block reason is required (minimum 10 characters)' });
+    }
+
+    // Can't change own status
+    if (req.params.id === req.user.id) {
+      return res.status(400).json({ error: 'You cannot change your own account status' });
+    }
+
+    const targetUser = User.findById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Can't modify superadmin accounts unless you are superadmin
+    if (targetUser.userType === 'superadmin' && req.user.userType !== 'superadmin') {
+      return res.status(403).json({ error: 'You do not have permission to modify super admin accounts' });
+    }
+
+    const previousStatus = targetUser.status;
+    const updatedUser = User.updateStatus(req.params.id, status, status === 'blocked' ? blockReason.trim() : null);
+
+    logAudit(req, {
+      action: 'admin.user_status_change',
+      category: 'users',
+      targetId: req.params.id,
+      targetType: 'user',
+      details: {
+        status,
+        previousStatus,
+        blockReason: status === 'blocked' ? blockReason.trim() : undefined,
+        contactName: targetUser.contactName,
+        email: targetUser.email
+      }
+    });
+
+    res.json({ message: `User ${status === 'active' ? 'reactivated' : status}`, user: updatedUser });
+  } catch (error) {
+    console.error('Error updating user status:', error);
+    res.status(500).json({ error: 'Failed to update user status' });
+  }
+});
+
+// Delete user (superadmin only) - soft delete
+router.delete('/users/:id', requireSuperAdmin, (req, res) => {
+  try {
+    // Can't delete self
+    if (req.params.id === req.user.id) {
+      return res.status(400).json({ error: 'You cannot delete your own account' });
+    }
+
+    const targetUser = User.findById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Can't delete other superadmins
+    if (targetUser.userType === 'superadmin') {
+      return res.status(403).json({ error: 'Super admin accounts cannot be deleted' });
+    }
+
+    User.softDelete(req.params.id);
+
+    logAudit(req, {
+      action: 'admin.user_delete',
+      category: 'users',
+      targetId: req.params.id,
+      targetType: 'user',
+      details: {
+        contactName: targetUser.contactName,
+        email: targetUser.email,
+        userType: targetUser.userType
+      }
+    });
+
+    res.json({ message: 'User permanently deleted' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
   }
 });
 

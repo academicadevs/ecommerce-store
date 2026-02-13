@@ -57,8 +57,10 @@ export const User = {
     return bcrypt.compare(plainPassword.toLowerCase(), hashedPassword);
   },
 
-  getAll: () => {
-    const stmt = db.prepare('SELECT id, email, userType, contactName, positionTitle, department, schoolName, principalName, phone, address, role, createdAt, school_id, supervisor, office_id, password_needs_update FROM users ORDER BY createdAt DESC');
+  getAll: (includeDeleted = false) => {
+    const base = 'SELECT id, email, userType, contactName, positionTitle, department, schoolName, principalName, phone, address, role, createdAt, school_id, supervisor, office_id, password_needs_update, status, block_reason FROM users';
+    const where = includeDeleted ? '' : " WHERE status != 'deleted'";
+    const stmt = db.prepare(base + where + ' ORDER BY createdAt DESC');
     return stmt.all();
   },
 
@@ -188,5 +190,25 @@ export const User = {
   clearResetToken: (id) => {
     const stmt = db.prepare('UPDATE users SET password_reset_token = NULL, password_reset_expires = NULL WHERE id = ?');
     stmt.run(id);
+  },
+
+  updateStatus: (id, status, blockReason = null) => {
+    const stmt = db.prepare('UPDATE users SET status = ?, block_reason = ? WHERE id = ?');
+    stmt.run(status, blockReason, id);
+    return User.findById(id);
+  },
+
+  softDelete: (id) => {
+    // Set status to deleted, null out email (free unique constraint), clear password
+    const stmt = db.prepare("UPDATE users SET status = 'deleted', email = NULL, password = 'DELETED', block_reason = NULL WHERE id = ?");
+    stmt.run(id);
+    // Set orders.userId to NULL to preserve order data
+    const orderStmt = db.prepare('UPDATE orders SET userId = NULL WHERE userId = ?');
+    orderStmt.run(id);
+  },
+
+  getByStatus: (status) => {
+    const stmt = db.prepare('SELECT id, email, userType, contactName, positionTitle, department, schoolName, principalName, phone, address, role, createdAt, school_id, supervisor, office_id, password_needs_update, status, block_reason FROM users WHERE status = ? ORDER BY createdAt DESC');
+    return stmt.all(status);
   },
 };

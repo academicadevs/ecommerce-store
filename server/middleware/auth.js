@@ -18,6 +18,11 @@ export const authenticate = (req, res, next) => {
       return res.status(401).json({ error: 'Invalid token. User not found.' });
     }
 
+    // Check if user account is blocked, archived, or deleted
+    if (user.status === 'blocked' || user.status === 'archived' || user.status === 'deleted') {
+      return res.status(403).json({ error: 'Your session has expired. Please log in again.' });
+    }
+
     req.user = user;
     next();
   } catch (error) {

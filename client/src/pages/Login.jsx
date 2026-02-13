@@ -12,6 +12,7 @@ export default function Login() {
     password: '',
   });
   const [error, setError] = useState('');
+  const [errorCode, setErrorCode] = useState('');
   const [loading, setLoading] = useState(false);
 
   const returnUrl = searchParams.get('returnUrl');
@@ -20,6 +21,7 @@ export default function Login() {
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setError('');
+    setErrorCode('');
   };
 
   const handleSubmit = async (e) => {
@@ -45,6 +47,8 @@ export default function Login() {
         navigate('/products', { replace: true });
       }
     } catch (err) {
+      const code = err.response?.data?.code || '';
+      setErrorCode(code);
       setError(err.response?.data?.error || 'Failed to log in. Please try again.');
     } finally {
       setLoading(false);
@@ -60,7 +64,29 @@ export default function Login() {
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-8">
-          {error && (
+          {error && errorCode === 'ACCOUNT_BLOCKED' && (
+            <div className="bg-red-50 border border-red-200 px-4 py-3 rounded-lg mb-6 flex items-start gap-3">
+              <svg className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+              <div>
+                <p className="font-semibold text-red-700 text-sm">Account Blocked</p>
+                <p className="text-red-600 text-sm mt-1">{error}</p>
+              </div>
+            </div>
+          )}
+          {error && errorCode === 'ACCOUNT_ARCHIVED' && (
+            <div className="bg-amber-50 border border-amber-200 px-4 py-3 rounded-lg mb-6 flex items-start gap-3">
+              <svg className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="font-semibold text-amber-700 text-sm">Account Deactivated</p>
+                <p className="text-amber-600 text-sm mt-1">{error}</p>
+              </div>
+            </div>
+          )}
+          {error && !errorCode && (
             <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg mb-6">
               {error}
             </div>

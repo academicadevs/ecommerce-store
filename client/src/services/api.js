@@ -25,6 +25,12 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
+    // Handle blocked/archived users with active sessions (middleware returns 403)
+    if (error.response?.status === 403 && error.response?.data?.error === 'Your session has expired. Please log in again.') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
     return Promise.reject(error);
   }
 );
@@ -138,6 +144,8 @@ export const adminAPI = {
   updateUserRole: (id, role) => api.put(`/admin/users/${id}/role`, { role }),
   updateUserType: (id, userType, profileData) => api.put(`/admin/users/${id}/userType`, { userType, profileData }),
   getUserOrders: (userId) => api.get(`/admin/users/${userId}/orders`),
+  updateUserStatus: (userId, data) => api.put(`/admin/users/${userId}/status`, data),
+  deleteUser: (userId) => api.delete(`/admin/users/${userId}`),
   // Proofs
   getOrderProofs: (orderId) => api.get(`/proofs/order/${orderId}`),
   uploadProof: (formData) => api.post('/proofs/upload', formData, {

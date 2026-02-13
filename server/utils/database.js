@@ -570,6 +570,84 @@ export function initializeDatabase() {
     console.error('Error clearing placeholder emails:', e.message);
   }
 
+  // Migration: Add status column to users (active, archived, blocked, deleted)
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'`);
+    console.log('Added status column to users table');
+  } catch (e) {
+    // Column already exists
+  }
+
+  // Migration: Add block_reason column to users
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN block_reason TEXT`);
+    console.log('Added block_reason column to users table');
+  } catch (e) {
+    // Column already exists
+  }
+
+  // Index for status filtering
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_users_status ON users(status)`);
+  } catch (e) {
+    // Index might already exist
+  }
+
+  // Backfill: Set status = 'active' for all existing users where status is NULL
+  try {
+    const result = db.prepare(`UPDATE users SET status = 'active' WHERE status IS NULL`).run();
+    if (result.changes > 0) {
+      console.log(`Backfilled status='active' for ${result.changes} users`);
+    }
+  } catch (e) {
+    console.error('Error backfilling user status:', e.message);
+  }
+
+  // Migration: Make orders.userId nullable (so deleted user's orders persist)
+  // SQLite requires table rebuild to change column constraints
+  try {
+    const orderColInfo = db.prepare(`PRAGMA table_info(orders)`).all();
+    const userIdCol = orderColInfo.find(c => c.name === 'userId');
+    if (userIdCol && userIdCol.notnull === 1) {
+      console.log('Migrating orders table: making userId nullable...');
+      db.exec('PRAGMA foreign_keys=OFF');
+      db.exec('BEGIN TRANSACTION');
+      try {
+        db.exec(`
+          CREATE TABLE orders_new (
+            id TEXT PRIMARY KEY,
+            userId TEXT,
+            items TEXT NOT NULL,
+            total REAL NOT NULL,
+            status TEXT DEFAULT 'pending',
+            shippingInfo TEXT NOT NULL,
+            notes TEXT,
+            assignedTo TEXT,
+            orderNumber TEXT,
+            createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (userId) REFERENCES users(id),
+            FOREIGN KEY (assignedTo) REFERENCES users(id)
+          )
+        `);
+        db.exec(`INSERT INTO orders_new SELECT id, userId, items, total, status, shippingInfo, notes, assignedTo, orderNumber, createdAt FROM orders`);
+        db.exec(`DROP TABLE orders`);
+        db.exec(`ALTER TABLE orders_new RENAME TO orders`);
+        // Recreate indexes
+        db.exec(`CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(userId)`);
+        db.exec(`CREATE INDEX IF NOT EXISTS idx_orders_assigned ON orders(assignedTo)`);
+        db.exec('COMMIT');
+        console.log('Orders table migrated: userId is now nullable');
+      } catch (migrationErr) {
+        db.exec('ROLLBACK');
+        throw migrationErr;
+      } finally {
+        db.exec('PRAGMA foreign_keys=ON');
+      }
+    }
+  } catch (e) {
+    console.error('Error migrating orders.userId column:', e.message);
+  }
+
   // Audit log table for superadmin activity tracking
   db.exec(`
     CREATE TABLE IF NOT EXISTS audit_logs (
