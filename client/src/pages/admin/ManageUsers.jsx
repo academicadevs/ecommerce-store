@@ -611,7 +611,7 @@ export default function ManageUsers() {
       {/* Users List */}
       <div className="space-y-4">
         {filteredUsers.map((user) => (
-          <div key={user.id} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+          <div key={user.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-visible">
             {/* User Row */}
             <div className="p-6">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
