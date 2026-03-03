@@ -8,6 +8,7 @@ import { simpleParser } from 'mailparser';
 import { Order } from '../models/Order.js';
 import { OrderCommunication } from '../models/OrderCommunication.js';
 import { logAudit } from '../utils/auditLog.js';
+import { notifyNewMessage } from '../utils/notify.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -264,6 +265,7 @@ router.post('/sendgrid/inbound', upload.none(), async (req, res) => {
     console.log('Recorded inbound communication:', communication.id);
 
     logAudit(req, { action: 'communication.inbound_received', category: 'communications', targetId: originalComm.orderId, targetType: 'order', details: { from, subject: subject || 'Re: ' + originalComm.subject, orderNumber: order.orderNumber, contactName: order.shippingInfo?.contactName, hasAttachments: emailAttachments.length > 0 } });
+    notifyNewMessage({ communication, order });
 
     res.status(200).json({ message: 'Email received', communicationId: communication.id });
   } catch (error) {

@@ -10,28 +10,32 @@ import { adminAPI } from '../../services/api';
 import { formatDatePT } from '../../utils/dateFormat';
 import usePolling from '../../hooks/usePolling';
 
-const statusOptions = ['new', 'waiting_feedback', 'in_progress', 'submitted_to_kimp360', 'waiting_signoff', 'sent_to_print', 'completed', 'on_hold'];
+const statusOptions = ['new', 'gathering_details', 'design_phase', 'submitted_to_kimp360', 'internal_review', 'waiting_feedback', 'waiting_signoff', 'sent_to_print', 'completed', 'on_hold'];
 
 const statusColors = {
   new: 'bg-blue-100 text-blue-800',
-  waiting_feedback: 'bg-yellow-100 text-yellow-800',
-  in_progress: 'bg-indigo-100 text-indigo-800',
-  on_hold: 'bg-orange-100 text-orange-800',
-  waiting_signoff: 'bg-purple-100 text-purple-800',
+  gathering_details: 'bg-sky-100 text-sky-800',
+  design_phase: 'bg-indigo-100 text-indigo-800',
   submitted_to_kimp360: 'bg-pink-100 text-pink-800',
+  internal_review: 'bg-violet-100 text-violet-800',
+  waiting_feedback: 'bg-yellow-100 text-yellow-800',
+  waiting_signoff: 'bg-purple-100 text-purple-800',
   sent_to_print: 'bg-cyan-100 text-cyan-800',
   completed: 'bg-green-100 text-green-800',
+  on_hold: 'bg-orange-100 text-orange-800',
 };
 
 const statusLabels = {
   new: 'New Request Received',
-  waiting_feedback: 'Waiting for Feedback',
-  in_progress: 'In Progress',
-  on_hold: 'On Hold',
-  waiting_signoff: 'Waiting for Sign Off',
+  gathering_details: 'Gathering Project Details',
+  design_phase: 'Design Phase',
   submitted_to_kimp360: 'Submitted to Kimp360',
-  sent_to_print: 'Sent to Print',
+  internal_review: 'Internal Review',
+  waiting_feedback: 'Waiting for Feedback',
+  waiting_signoff: 'Waiting for Sign Off',
+  sent_to_print: 'Sent to Print / Third-Party',
   completed: 'Completed',
+  on_hold: 'On Hold',
 };
 
 export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, admins, user }) {
@@ -620,25 +624,31 @@ export default function OrderDetailModal({ order, isOpen, onClose, onUpdate, adm
                     <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-academica-blue mx-auto"></div>
                   </div>
                 ) : notes.length > 0 ? (
-                  notes.map((note) => (
-                    <div key={note.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <div className="flex justify-between items-start mb-1">
-                        <span className="font-medium text-charcoal text-sm">{note.adminName}</span>
-                        {note.adminId === user?.id && (
-                          <button
-                            onClick={() => handleDeleteNote(note.id)}
-                            className="text-gray-400 hover:text-red-500 text-xs"
-                          >
-                            Delete
-                          </button>
+                  notes.map((note) => {
+                    const systemPrefixes = ['Status changed', 'Assignment changed', 'CC emails updated', 'Customer info updated', 'Request reassigned', 'Request items updated', 'Email sent to'];
+                    const isSystemLog = systemPrefixes.some(p => note.note.startsWith(p));
+                    return (
+                      <div key={note.id} className={`rounded-lg p-3 border ${isSystemLog ? 'bg-gray-50/50 border-gray-100' : 'bg-gray-50 border-gray-200'}`}>
+                        {!isSystemLog && (
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="font-medium text-charcoal text-sm">{note.adminName}</span>
+                            {note.adminId === user?.id && (
+                              <button
+                                onClick={() => handleDeleteNote(note.id)}
+                                className="text-gray-400 hover:text-red-500 text-xs"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
                         )}
+                        <p className={`text-sm whitespace-pre-wrap ${isSystemLog ? 'text-gray-500 italic' : 'text-gray-700'}`}>{note.note}</p>
+                        <p className="text-gray-400 text-xs mt-1">
+                          {formatDatePT(note.createdAt, { year: undefined })}
+                        </p>
                       </div>
-                      <p className="text-gray-700 text-sm whitespace-pre-wrap">{note.note}</p>
-                      <p className="text-gray-400 text-xs mt-1">
-                        {formatDatePT(note.createdAt, { year: undefined })}
-                      </p>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <p className="text-gray-500 text-sm">No notes yet</p>
                 )}

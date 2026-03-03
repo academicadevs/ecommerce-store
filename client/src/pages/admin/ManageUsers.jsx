@@ -12,24 +12,28 @@ import { formatDateOnlyPT, formatDatePT } from '../../utils/dateFormat';
 
 const statusColors = {
   new: 'bg-blue-100 text-blue-800',
-  waiting_feedback: 'bg-yellow-100 text-yellow-800',
-  in_progress: 'bg-indigo-100 text-indigo-800',
-  on_hold: 'bg-orange-100 text-orange-800',
-  waiting_signoff: 'bg-purple-100 text-purple-800',
+  gathering_details: 'bg-sky-100 text-sky-800',
+  design_phase: 'bg-indigo-100 text-indigo-800',
   submitted_to_kimp360: 'bg-pink-100 text-pink-800',
+  internal_review: 'bg-violet-100 text-violet-800',
+  waiting_feedback: 'bg-yellow-100 text-yellow-800',
+  waiting_signoff: 'bg-purple-100 text-purple-800',
   sent_to_print: 'bg-cyan-100 text-cyan-800',
   completed: 'bg-green-100 text-green-800',
+  on_hold: 'bg-orange-100 text-orange-800',
 };
 
 const statusLabels = {
   new: 'New Request Received',
-  waiting_feedback: 'Waiting for Feedback',
-  in_progress: 'In Progress',
-  on_hold: 'On Hold',
-  waiting_signoff: 'Waiting for Sign Off',
+  gathering_details: 'Gathering Project Details',
+  design_phase: 'Design Phase',
   submitted_to_kimp360: 'Submitted to Kimp360',
-  sent_to_print: 'Sent to Print',
+  internal_review: 'Internal Review',
+  waiting_feedback: 'Waiting for Feedback',
+  waiting_signoff: 'Waiting for Sign Off',
+  sent_to_print: 'Sent to Print / Third-Party',
   completed: 'Completed',
+  on_hold: 'On Hold',
 };
 
 const USER_TYPE_LABELS = {
@@ -671,8 +675,8 @@ export default function ManageUsers() {
 
                 {/* User Type & Actions */}
                 <div className="flex flex-wrap items-center gap-4">
-                  {/* Only Super Admins can change user types */}
-                  {isSuperAdmin && (
+                  {/* User Type dropdown — admins see it for non-admin users, superadmins see it for all */}
+                  {(isSuperAdmin || (user.userType !== 'admin' && user.userType !== 'superadmin')) && (
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">User Type</label>
                       <select
@@ -686,8 +690,8 @@ export default function ManageUsers() {
                         <option value="guest">Quick Added</option>
                         <option value="school_staff">School Staff Member</option>
                         <option value="academica_employee">Academica Employee</option>
-                        <option value="admin">Admin</option>
-                        <option value="superadmin">Super Admin</option>
+                        {isSuperAdmin && <option value="admin">Admin</option>}
+                        {isSuperAdmin && <option value="superadmin">Super Admin</option>}
                       </select>
                     </div>
                   )}

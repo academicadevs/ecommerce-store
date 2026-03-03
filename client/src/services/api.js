@@ -86,7 +86,14 @@ export const adminAPI = {
   // Notifications
   getUnreadCounts: () => api.get('/admin/notifications/unread-counts'),
   getRecentNotifications: () => api.get('/admin/notifications/recent'),
+  getNotificationsBell: () => api.get('/admin/notifications/bell'),
+  getNotifications: (params) => api.get('/admin/notifications', { params }),
   markNotificationsRead: (orderId) => api.post(`/admin/notifications/mark-read/${orderId}`),
+  markNotificationRead: (id) => api.put(`/admin/notifications/${id}/read`),
+  markNotificationUnread: (id) => api.put(`/admin/notifications/${id}/unread`),
+  markAllNotificationsRead: () => api.post('/admin/notifications/mark-all-read'),
+  bulkMarkNotificationsRead: (ids) => api.post('/admin/notifications/bulk-read', { ids }),
+  bulkMarkNotificationsUnread: (ids) => api.post('/admin/notifications/bulk-unread', { ids }),
   // Products
   getProducts: () => api.get('/admin/products'),
   createProduct: (data) => api.post('/admin/products', data),

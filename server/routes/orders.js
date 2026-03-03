@@ -11,6 +11,7 @@ import { User } from '../models/User.js';
 import { authenticate } from '../middleware/auth.js';
 import { sendOrderConfirmationEmail } from '../utils/email.js';
 import { logAudit } from '../utils/auditLog.js';
+import { notifyNewOrder } from '../utils/notify.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -140,6 +141,7 @@ router.post('/guest', async (req, res) => {
     });
 
     logAudit({ user: guestUser, ip: req.ip, connection: req.connection }, { action: 'order.guest_create', category: 'orders', targetId: order.id, targetType: 'order', details: { contactName: guestInfo.contactName, email: guestInfo.email, schoolName: guestInfo.schoolName, projectTitle: customRequestData?.projectTitle, orderNumber: order.orderNumber } });
+    notifyNewOrder({ order });
 
     // Send confirmation email (fire-and-forget so response isn't blocked)
     sendOrderConfirmationEmail(order, guestUser).catch(emailError => {
@@ -235,6 +237,7 @@ router.post('/', async (req, res) => {
     });
 
     logAudit(req, { action: 'order.create', category: 'orders', targetId: order.id, targetType: 'order', details: { total, itemCount: orderItems.length, isSpecialRequest, orderNumber: order.orderNumber, contactName: shippingInfo.contactName, email: shippingInfo.email, itemNames: orderItems.map(i => i.name).filter(Boolean).join(', ') } });
+    notifyNewOrder({ order });
 
     // Send confirmation emails (fire-and-forget so response isn't blocked)
     sendOrderConfirmationEmail(order, req.user).catch(emailError => {

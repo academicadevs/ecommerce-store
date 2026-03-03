@@ -2,24 +2,28 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 
 const statusLabels = {
   new: 'New Request',
-  waiting_feedback: 'Waiting for Feedback',
-  in_progress: 'In Progress',
-  on_hold: 'On Hold',
-  waiting_signoff: 'Waiting for Sign Off',
+  gathering_details: 'Gathering Details',
+  design_phase: 'Design Phase',
   submitted_to_kimp360: 'Submitted to Kimp360',
-  sent_to_print: 'Sent to Print',
+  internal_review: 'Internal Review',
+  waiting_feedback: 'Waiting for Feedback',
+  waiting_signoff: 'Waiting for Sign Off',
+  sent_to_print: 'Sent to Print / Third-Party',
   completed: 'Completed',
+  on_hold: 'On Hold',
 };
 
 const statusColors = {
   new: '#3b82f6',
-  waiting_feedback: '#f59e0b',
-  in_progress: '#8b5cf6',
-  on_hold: '#ef4444',
-  waiting_signoff: '#06b6d4',
+  gathering_details: '#0ea5e9',
+  design_phase: '#8b5cf6',
   submitted_to_kimp360: '#6366f1',
+  internal_review: '#7c3aed',
+  waiting_feedback: '#f59e0b',
+  waiting_signoff: '#06b6d4',
   sent_to_print: '#14b8a6',
   completed: '#10b981',
+  on_hold: '#ef4444',
 };
 
 const RADIAN = Math.PI / 180;

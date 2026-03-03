@@ -10,6 +10,7 @@ import { OrderCommunication } from '../models/OrderCommunication.js';
 import { sendOrderEmail } from '../utils/sendgrid.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 import { logAudit } from '../utils/auditLog.js';
+import { notifyNewFeedback, notifyProofSignoff } from '../utils/notify.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -277,6 +278,7 @@ router.post('/review/:accessToken/annotate', (req, res) => {
 
     const annotOrder = Order.findById(proof.orderId);
     logAudit(req, { action: 'proof.annotate', category: 'proofs', targetId: proof.id, targetType: 'proof', details: { authorName, type, comment: comment?.substring(0, 100), proofTitle: proof.title, version: proof.version, orderNumber: annotOrder?.orderNumber } });
+    notifyNewFeedback({ annotation, proof, order: annotOrder });
     res.json({ annotation });
   } catch (error) {
     console.error('Error adding annotation:', error);
@@ -358,6 +360,7 @@ router.post('/review/:accessToken/signoff', (req, res) => {
       });
     }
 
+    notifyProofSignoff({ proof, order, signedOffBy });
     res.json({ proof: updatedProof, message: 'Proof approved successfully' });
   } catch (error) {
     console.error('Error signing off proof:', error);

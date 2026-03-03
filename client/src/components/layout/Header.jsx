@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import NotificationBell from './NotificationBell';
 
-const categories = [
+const productCategories = [
   {
     name: 'Marketing Materials',
     subcategories: ['Flyers', 'Postcards', 'Brochures', 'Business Cards', 'Posters', 'Direct Mail', 'Enrollment Materials', 'Folders']
@@ -24,21 +25,13 @@ const categories = [
     name: 'Digital Products',
     subcategories: ['Presentation Templates', 'Social Media Templates', 'Document Templates', 'Digital Signage']
   },
-  {
-    name: 'Custom Requests',
-    subcategories: ['Custom Design', 'Special Projects', 'Rush Orders', 'Other'],
-    link: '/custom-request'
-  },
-  {
-    name: 'Quick Request',
-    subcategories: [],
-    link: '/quick-request'
-  },
-  {
-    name: 'Digital Ad Campaign',
-    subcategories: [],
-    link: '/meta-ads'
-  }
+];
+
+const navLinks = [
+  { name: 'Quick Request', link: '/quick-request' },
+  { name: 'Custom Requests', link: '/custom-request' },
+  { name: 'Digital Ad Campaign', link: '/meta-ads' },
+  { name: 'Website Requests', link: '/website-request' },
 ];
 
 export default function Header() {
@@ -112,16 +105,21 @@ export default function Header() {
             {/* Right Side Actions */}
             <div className="flex items-center gap-4">
               {isAdmin && (
-                <Link
-                  to="/admin"
-                  className="hidden sm:flex items-center gap-1 text-charcoal hover:text-academica-blue transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span className="text-sm font-medium">Admin</span>
-                </Link>
+                <>
+                  <div className="hidden sm:flex">
+                    <NotificationBell />
+                  </div>
+                  <Link
+                    to="/admin"
+                    className="hidden sm:flex items-center gap-1 text-charcoal hover:text-academica-blue transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="text-sm font-medium">Admin</span>
+                  </Link>
+                </>
               )}
 
               {isAuthenticated && (
@@ -187,44 +185,75 @@ export default function Header() {
       <nav className="hidden md:block bg-[#C1272D] text-white relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center">
-            {categories.map((category) => (
-              <div
-                key={category.name}
-                className="relative"
-                onMouseEnter={() => setActiveMenu(category.name)}
-                onMouseLeave={() => setActiveMenu(null)}
+            {/* Products Mega Menu Trigger */}
+            <div
+              className="relative"
+              onMouseEnter={() => setActiveMenu('products')}
+              onMouseLeave={() => setActiveMenu(null)}
+            >
+              <Link
+                to="/products"
+                className={`flex items-center gap-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  activeMenu === 'products' ? 'bg-academica-blue' : 'hover:bg-[#a82227]'
+                }`}
               >
-                <Link
-                  to={category.link || `/products?category=${encodeURIComponent(category.name)}`}
-                  className={`flex items-center gap-1 px-4 py-3 text-sm font-medium transition-colors ${
-                    activeMenu === category.name ? 'bg-academica-blue' : 'hover:bg-[#a82227]'
-                  }`}
-                >
-                  {category.name}
-                  {!category.link && (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  )}
-                </Link>
+                Products
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </Link>
 
-                {/* Dropdown */}
-                {activeMenu === category.name && !category.link && (
-                  <div className="absolute left-0 top-full bg-white shadow-lg border border-gray-200 rounded-b-lg min-w-[200px] z-50">
-                    <div className="py-2">
-                      {category.subcategories.map((sub) => (
+              {/* Mega Menu Dropdown */}
+              {activeMenu === 'products' && (
+                <div className="absolute left-0 top-full bg-white shadow-xl border border-gray-200 rounded-b-xl z-50 w-[700px]">
+                  <div className="grid grid-cols-3 gap-x-6 gap-y-8 p-6">
+                    {productCategories.map((category) => (
+                      <div key={category.name}>
                         <Link
-                          key={sub}
-                          to={`/products?category=${encodeURIComponent(category.name)}&subcategory=${encodeURIComponent(sub)}`}
-                          className="block px-4 py-2 text-sm text-charcoal hover:bg-academica-blue-50 hover:text-academica-blue transition-colors"
+                          to={`/products?category=${encodeURIComponent(category.name)}`}
+                          className="text-sm font-semibold text-charcoal hover:text-academica-blue transition-colors"
                         >
-                          {sub}
+                          {category.name}
                         </Link>
-                      ))}
-                    </div>
+                        <ul className="mt-2 space-y-1">
+                          {category.subcategories.map((sub) => (
+                            <li key={sub}>
+                              <Link
+                                to={`/products?category=${encodeURIComponent(category.name)}&subcategory=${encodeURIComponent(sub)}`}
+                                className="block text-sm text-gray-500 hover:text-academica-blue transition-colors"
+                              >
+                                {sub}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
+                  <div className="border-t border-gray-100 px-6 py-3 bg-gray-50 rounded-b-xl">
+                    <Link
+                      to="/products"
+                      className="inline-flex items-center gap-1 text-sm font-medium text-academica-blue hover:text-academica-blue-600 transition-colors"
+                    >
+                      View All Products
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                      </svg>
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Standalone Nav Links */}
+            {navLinks.map((item) => (
+              <Link
+                key={item.name}
+                to={item.link}
+                className="px-4 py-3 text-sm font-medium transition-colors hover:bg-[#a82227]"
+              >
+                {item.name}
+              </Link>
             ))}
           </div>
         </div>
@@ -243,30 +272,63 @@ export default function Header() {
               />
             </div>
 
-            {/* Categories */}
-            {categories.map((category) => (
-              <div key={category.name} className="py-2 border-t border-gray-100">
+            {/* Products (expandable) */}
+            <div className="py-2 border-t border-gray-100">
+              <button
+                onClick={() => setActiveMenu(activeMenu === 'mobile-products' ? null : 'mobile-products')}
+                className="flex items-center justify-between w-full font-medium text-charcoal py-1"
+              >
+                Products
+                <svg className={`w-4 h-4 transition-transform ${activeMenu === 'mobile-products' ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {activeMenu === 'mobile-products' && (
+                <div className="mt-2 space-y-3 pl-2">
+                  {productCategories.map((category) => (
+                    <div key={category.name}>
+                      <Link
+                        to={`/products?category=${encodeURIComponent(category.name)}`}
+                        className="block text-sm font-semibold text-charcoal py-1"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        {category.name}
+                      </Link>
+                      <div className="pl-3 space-y-1">
+                        {category.subcategories.map((sub) => (
+                          <Link
+                            key={sub}
+                            to={`/products?category=${encodeURIComponent(category.name)}&subcategory=${encodeURIComponent(sub)}`}
+                            className="block text-sm text-gray-500 py-1"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            {sub}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  <Link
+                    to="/products"
+                    className="block text-sm font-medium text-academica-blue py-1"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    View All Products
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Standalone Nav Links */}
+            {navLinks.map((item) => (
+              <div key={item.name} className="py-2 border-t border-gray-100">
                 <Link
-                  to={category.link || `/products?category=${encodeURIComponent(category.name)}`}
+                  to={item.link}
                   className="block font-medium text-charcoal py-1"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  {category.name}
+                  {item.name}
                 </Link>
-                {!category.link && (
-                  <div className="pl-4 space-y-1">
-                    {category.subcategories.map((sub) => (
-                      <Link
-                        key={sub}
-                        to={`/products?category=${encodeURIComponent(category.name)}&subcategory=${encodeURIComponent(sub)}`}
-                        className="block text-sm text-gray-600 py-1"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        {sub}
-                      </Link>
-                    ))}
-                  </div>
-                )}
               </div>
             ))}
 
@@ -288,13 +350,22 @@ export default function Header() {
                   My Requests
                 </Link>
                 {isAdmin && (
-                  <Link
-                    to="/admin"
-                    className="block text-charcoal py-1"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Admin Dashboard
-                  </Link>
+                  <>
+                    <Link
+                      to="/admin"
+                      className="block text-charcoal py-1"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Admin Dashboard
+                    </Link>
+                    <Link
+                      to="/admin/notifications"
+                      className="block text-charcoal py-1"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Notifications
+                    </Link>
+                  </>
                 )}
               </div>
             ) : null}

@@ -49,35 +49,59 @@ export default function Home() {
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-academica-blue via-academica-blue-600 to-sapphire text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
-          <div className="max-w-3xl">
+          <div className="text-center max-w-3xl mx-auto mb-14">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-              Marketing Materials for
-              <span className="text-white"> Academica Schools</span>
+              Your School's Marketing Starts Here
             </h1>
-
-            <p className="text-xl text-white/80 mb-8 max-w-xl">
-              Quality print products, promotional items, and trade show equipment designed to help your school stand out and attract families.
+            <p className="text-xl text-white/80 max-w-2xl mx-auto">
+              The official ordering portal for the Academica Design Department. Browse our catalog or submit a quick request — we'll handle the rest.
             </p>
+          </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link
-                to="/products"
-                className="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-100 text-academica-blue font-semibold text-lg px-8 py-4 rounded-lg transition-all shadow-lg hover:shadow-xl"
-              >
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            {/* Path 1: Browse the Catalog */}
+            <Link
+              to="/products"
+              className="group bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 rounded-2xl p-8 transition-all hover:scale-[1.02] text-left"
+            >
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-5">
+                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">I Know What I Need</h2>
+              <p className="text-white/70 mb-6">
+                Browse our full catalog of print materials, signage, apparel, promo items, and more. Pick exactly what you want and customize your order.
+              </p>
+              <span className="inline-flex items-center gap-2 text-white font-semibold group-hover:gap-3 transition-all">
                 Browse Products
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
-              </Link>
-              {!isAuthenticated && (
-                <Link
-                  to="/register"
-                  className="inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white font-semibold text-lg px-8 py-4 rounded-lg border border-white/30 transition-all"
-                >
-                  Create Account
-                </Link>
-              )}
-            </div>
+              </span>
+            </Link>
+
+            {/* Path 2: Quick Request */}
+            <Link
+              to="/quick-request"
+              className="group bg-white hover:bg-gray-50 rounded-2xl p-8 transition-all hover:scale-[1.02] text-left shadow-lg"
+            >
+              <div className="w-12 h-12 bg-academica-blue-50 rounded-xl flex items-center justify-center mb-5">
+                <svg className="w-6 h-6 text-academica-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-charcoal mb-2">Just Get It Done</h2>
+              <p className="text-gray-600 mb-6">
+                Not sure exactly what you need? Tell us about your project and we'll figure out the details. Fast, easy, and no catalog browsing required.
+              </p>
+              <span className="inline-flex items-center gap-2 text-academica-blue font-semibold group-hover:gap-3 transition-all">
+                Submit a Request
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </span>
+            </Link>
           </div>
         </div>
       </section>
@@ -128,34 +152,6 @@ export default function Home() {
                 organized and trackable ordering experience.
               </p>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Website Requests Section */}
-      <section className="py-12 bg-gray-50 border-y border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center gap-4">
-              <div className="flex-shrink-0 w-12 h-12 bg-sapphire/10 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-sapphire" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-semibold text-charcoal text-lg">Need Website Updates or Changes?</h3>
-                <p className="text-gray-600">For all website-related requests, please contact our web team directly.</p>
-              </div>
-            </div>
-            <a
-              href="mailto:bryce.thiriot@academicanv.com?subject=Website Request"
-              className="inline-flex items-center gap-2 bg-sapphire hover:bg-sapphire/90 text-white font-semibold px-6 py-3 rounded-lg transition-colors whitespace-nowrap"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              bryce.thiriot@academicanv.com
-            </a>
           </div>
         </div>
       </section>

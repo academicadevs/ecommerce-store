@@ -6,28 +6,29 @@ import { formatDatePT } from '../utils/dateFormat';
 
 const statusColors = {
   new: 'badge-info',
+  gathering_details: 'badge-info',
+  design_phase: 'badge-info',
   waiting_feedback: 'badge-warning',
-  in_progress: 'badge-info',
-  on_hold: 'badge-warning',
   waiting_signoff: 'badge-info',
   sent_to_print: 'badge-info',
   completed: 'badge-success',
+  on_hold: 'badge-warning',
 };
 
 const statusLabels = {
   new: 'New Request Received',
+  gathering_details: 'Gathering Project Details',
+  design_phase: 'Design Phase',
   waiting_feedback: 'Waiting for Feedback',
-  in_progress: 'In Progress',
-  on_hold: 'On Hold',
   waiting_signoff: 'Waiting for Sign Off',
-  sent_to_print: 'Sent to Print',
+  sent_to_print: 'Sent to Print / Third-Party',
   completed: 'Completed',
+  on_hold: 'On Hold',
 };
 
 // Get display status for users (hide internal statuses)
 const getDisplayStatus = (status) => {
-  // Submitted to Kimp360 is internal - show as In Progress to users
-  if (status === 'submitted_to_kimp360') return 'in_progress';
+  if (status === 'submitted_to_kimp360' || status === 'internal_review') return 'design_phase';
   return status;
 };
 

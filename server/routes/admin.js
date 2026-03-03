@@ -17,6 +17,7 @@ import { seedAll } from '../scripts/seedAll.js';
 import { sendOrderEmail } from '../utils/sendgrid.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { logAudit } from '../utils/auditLog.js';
+import { Notification } from '../models/Notification.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -105,7 +106,7 @@ router.get('/stats', (req, res) => {
   }
 });
 
-// Notifications - unread counts for all orders (for badges)
+// Notifications - unread counts for all orders (for kanban badges)
 router.get('/notifications/unread-counts', (req, res) => {
   try {
     const messageCounts = OrderCommunication.getUnreadCountsByOrder();
@@ -129,57 +130,92 @@ router.get('/notifications/unread-counts', (req, res) => {
   }
 });
 
-// Notifications - recent unread items (for dashboard panel)
+// Notifications - bell dropdown data (latest 20 + unread count)
+router.get('/notifications/bell', (req, res) => {
+  try {
+    const adminId = req.user.id;
+    const notifications = Notification.getRecent(20, adminId);
+    const unreadCount = Notification.getUnreadCount(adminId);
+    res.json({ notifications, unreadCount });
+  } catch (error) {
+    console.error('Error fetching bell notifications:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+// Notifications - recent (for dashboard, reads from notifications table)
 router.get('/notifications/recent', (req, res) => {
   try {
-    const recentMessages = OrderCommunication.getRecentUnread(10);
-    const recentFeedback = ProofAnnotation.getRecentUnread(10);
-
-    // Combine and sort by date
-    const notifications = [
-      ...recentMessages.map(msg => ({
-        id: msg.id,
-        type: 'message',
-        orderId: msg.orderId,
-        orderNumber: msg.orderNumber,
-        subject: msg.subject,
-        body: msg.body?.substring(0, 100) + (msg.body?.length > 100 ? '...' : ''),
-        senderEmail: msg.senderEmail,
-        createdAt: msg.createdAt
-      })),
-      ...recentFeedback.map(fb => ({
-        id: fb.id,
-        type: 'feedback',
-        orderId: fb.orderId,
-        orderNumber: fb.orderNumber,
-        proofTitle: fb.proofTitle,
-        proofVersion: fb.proofVersion,
-        comment: fb.comment?.substring(0, 100) + (fb.comment?.length > 100 ? '...' : ''),
-        authorName: fb.authorName,
-        createdAt: fb.createdAt
-      }))
-    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 15);
-
-    const totalUnread = {
-      messages: recentMessages.length,
-      feedback: recentFeedback.length
-    };
-
-    res.json({ notifications, totalUnread });
+    const adminId = req.user.id;
+    const notifications = Notification.getRecent(15, adminId);
+    const unreadCount = Notification.getUnreadCount(adminId);
+    res.json({ notifications, unreadCount });
   } catch (error) {
     console.error('Error fetching recent notifications:', error);
     res.status(500).json({ error: 'Failed to fetch notifications' });
   }
 });
 
-// Mark notifications as read for an order
+// Notifications - paginated list with filters
+router.get('/notifications', (req, res) => {
+  try {
+    const { page = 1, limit = 20, type, isRead, search } = req.query;
+    const result = Notification.getAll({ page: Number(page), limit: Number(limit), type, isRead, search, adminId: req.user.id });
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+// Notifications - mark all as read
+router.post('/notifications/mark-all-read', (req, res) => {
+  try {
+    Notification.markAllAsRead(req.user.id);
+    res.json({ message: 'All notifications marked as read' });
+  } catch (error) {
+    console.error('Error marking all as read:', error);
+    res.status(500).json({ error: 'Failed to mark all as read' });
+  }
+});
+
+// Notifications - bulk mark read
+router.post('/notifications/bulk-read', (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: 'ids array required' });
+    Notification.bulkMarkAsRead(ids, req.user.id);
+    res.json({ message: 'Notifications marked as read' });
+  } catch (error) {
+    console.error('Error bulk marking as read:', error);
+    res.status(500).json({ error: 'Failed to mark as read' });
+  }
+});
+
+// Notifications - bulk mark unread
+router.post('/notifications/bulk-unread', (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: 'ids array required' });
+    Notification.bulkMarkAsUnread(ids, req.user.id);
+    res.json({ message: 'Notifications marked as unread' });
+  } catch (error) {
+    console.error('Error bulk marking as unread:', error);
+    res.status(500).json({ error: 'Failed to mark as unread' });
+  }
+});
+
+// Mark notifications as read for an order (kanban + notifications table)
 router.post('/notifications/mark-read/:orderId', (req, res) => {
   try {
     const { orderId } = req.params;
 
-    // Mark both messages and feedback as read
+    // Mark both messages and feedback as read (kanban badges)
     OrderCommunication.markAsRead(orderId);
     ProofAnnotation.markAsReadByOrder(orderId);
+
+    // Also mark in notifications table (per-user)
+    Notification.markAsReadByOrder(orderId, req.user.id);
 
     const cmOrder = Order.findById(orderId);
     logAudit(req, { action: 'order.comms_mark_read', category: 'communications', targetId: orderId, targetType: 'order', details: { orderNumber: cmOrder?.orderNumber, contactName: cmOrder?.shippingInfo?.contactName } });
@@ -187,6 +223,28 @@ router.post('/notifications/mark-read/:orderId', (req, res) => {
   } catch (error) {
     console.error('Error marking notifications as read:', error);
     res.status(500).json({ error: 'Failed to mark as read' });
+  }
+});
+
+// Notifications - mark single as read
+router.put('/notifications/:id/read', (req, res) => {
+  try {
+    Notification.markAsRead(req.params.id, req.user.id);
+    res.json({ message: 'Notification marked as read' });
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    res.status(500).json({ error: 'Failed to mark as read' });
+  }
+});
+
+// Notifications - mark single as unread
+router.put('/notifications/:id/unread', (req, res) => {
+  try {
+    Notification.markAsUnread(req.params.id, req.user.id);
+    res.json({ message: 'Notification marked as unread' });
+  } catch (error) {
+    console.error('Error marking notification as unread:', error);
+    res.status(500).json({ error: 'Failed to mark as unread' });
   }
 });
 
@@ -454,7 +512,7 @@ router.put('/orders/:id', (req, res) => {
       return res.status(400).json({ error: 'Status is required' });
     }
 
-    const validStatuses = ['new', 'waiting_feedback', 'in_progress', 'submitted_to_kimp360', 'waiting_signoff', 'sent_to_print', 'completed', 'on_hold'];
+    const validStatuses = ['new', 'gathering_details', 'design_phase', 'submitted_to_kimp360', 'internal_review', 'waiting_feedback', 'waiting_signoff', 'sent_to_print', 'completed', 'on_hold'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
@@ -468,6 +526,21 @@ router.put('/orders/:id', (req, res) => {
     }
 
     logAudit(req, { action: 'order.status_change', category: 'orders', targetId: req.params.id, targetType: 'order', details: { status, previousStatus, orderNumber: order.orderNumber, contactName: order.shippingInfo?.contactName } });
+
+    // Log status change as an admin note
+    if (previousStatus && previousStatus !== status) {
+      const statusLabels = {
+        new: 'New Request Received', gathering_details: 'Gathering Project Details', design_phase: 'Design Phase',
+        submitted_to_kimp360: 'Submitted to Kimp360', internal_review: 'Internal Review',
+        waiting_feedback: 'Waiting for Feedback', waiting_signoff: 'Waiting for Sign Off',
+        sent_to_print: 'Sent to Print / Third-Party', completed: 'Completed', on_hold: 'On Hold',
+      };
+      const from = statusLabels[previousStatus] || previousStatus;
+      const to = statusLabels[status] || status;
+      const adminName = req.user.contactName || req.user.email;
+      Order.addNote(req.params.id, req.user.id, `Status changed from "${from}" to "${to}" by ${adminName}`);
+    }
+
     res.json({ message: 'Order updated', order });
   } catch (error) {
     console.error('Error updating order:', error);
@@ -488,6 +561,7 @@ router.put('/orders/:id/assign', (req, res) => {
       }
     }
 
+    const previousAssignee = Order.findById(req.params.id)?.assignedTo;
     const order = Order.assignTo(req.params.id, adminId || null);
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -495,6 +569,16 @@ router.put('/orders/:id/assign', (req, res) => {
 
     const assignedAdmin = adminId ? User.findById(adminId) : null;
     logAudit(req, { action: 'order.assign', category: 'orders', targetId: req.params.id, targetType: 'order', details: { adminId: adminId || 'unassigned', adminName: assignedAdmin?.contactName || (adminId ? undefined : 'unassigned'), orderNumber: order.orderNumber, contactName: order.shippingInfo?.contactName } });
+
+    // Log assignment change as an admin note
+    if (previousAssignee !== (adminId || null)) {
+      const prevAdmin = previousAssignee ? User.findById(previousAssignee) : null;
+      const prevName = prevAdmin?.contactName || prevAdmin?.email || 'Unassigned';
+      const newName = assignedAdmin?.contactName || assignedAdmin?.email || 'Unassigned';
+      const changedBy = req.user.contactName || req.user.email;
+      Order.addNote(req.params.id, req.user.id, `Assignment changed from "${prevName}" to "${newName}" by ${changedBy}`);
+    }
+
     res.json({ message: 'Order assigned', order });
   } catch (error) {
     console.error('Error assigning order:', error);
@@ -521,6 +605,10 @@ router.put('/orders/:id/cc-emails', (req, res) => {
     }
 
     logAudit(req, { action: 'order.emails_update', category: 'orders', targetId: req.params.id, targetType: 'order', details: { emailCount: validEmails.length, emails: validEmails.join(', '), orderNumber: order.orderNumber } });
+
+    const changedBy = req.user.contactName || req.user.email;
+    Order.addNote(req.params.id, req.user.id, `CC emails updated to: ${validEmails.length > 0 ? validEmails.join(', ') : 'none'} by ${changedBy}`);
+
     res.json({ message: 'CC emails updated', order });
   } catch (error) {
     console.error('Error updating CC emails:', error);
@@ -562,6 +650,19 @@ router.put('/orders/:id/shipping-info', (req, res) => {
       }
     }
     logAudit(req, { action: 'order.shipping_update', category: 'orders', targetId: req.params.id, targetType: 'order', details: { orderNumber: order.orderNumber, contactName: shippingInfo.contactName, changes: shippingChanges } });
+
+    const changedBy = req.user.contactName || req.user.email;
+    if (userId && userId !== oldOrder?.userId) {
+      const newUser = User.findById(userId);
+      const oldUser = oldOrder?.userId ? User.findById(oldOrder.userId) : null;
+      Order.addNote(req.params.id, req.user.id, `Request reassigned to user "${newUser?.contactName || newUser?.email || 'Unknown'}" (was "${oldUser?.contactName || oldUser?.email || 'Unknown'}") by ${changedBy}`);
+    }
+    if (shippingChanges.length > 0) {
+      const fieldLabels = { contactName: 'Contact Name', email: 'Email', phone: 'Phone', schoolName: 'School' };
+      const details = shippingChanges.map(c => `${fieldLabels[c.field] || c.field}: "${c.from || '—'}" → "${c.to || '—'}"`).join(', ');
+      Order.addNote(req.params.id, req.user.id, `Customer info updated — ${details} by ${changedBy}`);
+    }
+
     res.json({ message: 'Shipping info updated', order });
   } catch (error) {
     console.error('Error updating shipping info:', error);
@@ -626,6 +727,19 @@ router.put('/orders/:id/items', (req, res) => {
     const oldItems = order.items || [];
     const updatedOrder = Order.updateItems(req.params.id, items);
     logAudit(req, { action: 'order.items_update', category: 'orders', targetId: req.params.id, targetType: 'order', details: { itemCount: items.length, previousItemCount: oldItems.length, orderNumber: order.orderNumber, itemNames: items.map(i => i.name).filter(Boolean).join(', '), previousItemNames: oldItems.map(i => i.name).filter(Boolean).join(', ') } });
+
+    const changedBy = req.user.contactName || req.user.email;
+    // Detect added, removed, and modified items
+    const oldNames = oldItems.map(i => i.name).filter(Boolean);
+    const newNames = items.map(i => i.name).filter(Boolean);
+    const added = newNames.filter(n => !oldNames.includes(n));
+    const removed = oldNames.filter(n => !newNames.includes(n));
+    const parts = [];
+    if (added.length) parts.push(`added: ${added.join(', ')}`);
+    if (removed.length) parts.push(`removed: ${removed.join(', ')}`);
+    if (!parts.length) parts.push('items revised');
+    Order.addNote(req.params.id, req.user.id, `Request items updated (${parts.join('; ')}) by ${changedBy}`);
+
     res.json({ message: 'Order items updated', order: updatedOrder });
   } catch (error) {
     console.error('Error updating order items:', error);
@@ -716,6 +830,10 @@ router.post('/orders/:id/email', upload.array('attachments', 10), async (req, re
     });
 
     logAudit(req, { action: 'order.email_send', category: 'communications', targetId: req.params.id, targetType: 'order', details: { subject, to: customerEmail, orderNumber: order.orderNumber, contactName: order.shippingInfo?.contactName, hasAttachments: attachments.length > 0, attachmentCount: attachments.length || undefined } });
+
+    const changedBy = req.user.contactName || req.user.email;
+    Order.addNote(req.params.id, req.user.id, `Email sent to ${customerEmail} — "${subject}" by ${changedBy}`);
+
     res.json({ message: 'Email sent', communication });
   } catch (error) {
     console.error('Error sending email:', error);
@@ -801,11 +919,6 @@ router.put('/users/:id/userType', async (req, res) => {
   try {
     const { userType, profileData } = req.body;
 
-    // Only super admins can change user types
-    if (req.user.userType !== 'superadmin') {
-      return res.status(403).json({ error: 'Only super admins can change user types' });
-    }
-
     if (!userType || !['school_staff', 'academica_employee', 'admin', 'superadmin', 'guest'].includes(userType)) {
       return res.status(400).json({ error: 'Valid user type is required' });
     }
@@ -813,6 +926,19 @@ router.put('/users/:id/userType', async (req, res) => {
     const typeUser = User.findById(req.params.id);
     if (!typeUser) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Non-superadmins cannot promote to admin or superadmin
+    if (req.user.userType !== 'superadmin' && (userType === 'admin' || userType === 'superadmin')) {
+      return res.status(403).json({ error: 'Only super admins can assign admin roles' });
+    }
+    // Non-superadmins cannot modify superadmin users
+    if (typeUser.userType === 'superadmin' && req.user.userType !== 'superadmin') {
+      return res.status(403).json({ error: 'Only super admins can modify super admin users' });
+    }
+    // Non-superadmins cannot modify admin users
+    if (typeUser.userType === 'admin' && req.user.userType !== 'superadmin') {
+      return res.status(403).json({ error: 'Only super admins can modify admin users' });
     }
     const previousType = typeUser.userType;
 

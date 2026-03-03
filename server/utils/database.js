@@ -668,6 +668,45 @@ export function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_audit_logs_createdAt ON audit_logs(createdAt);
   `);
 
+  // Notifications table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT,
+      orderId TEXT,
+      userId TEXT,
+      sourceId TEXT,
+      sourceType TEXT,
+      isRead INTEGER DEFAULT 0,
+      metadata TEXT,
+      createdAt TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
+    CREATE INDEX IF NOT EXISTS idx_notifications_orderId ON notifications(orderId);
+    CREATE INDEX IF NOT EXISTS idx_notifications_createdAt ON notifications(createdAt);
+
+    CREATE TABLE IF NOT EXISTS notification_reads (
+      notificationId TEXT NOT NULL,
+      userId TEXT NOT NULL,
+      readAt TEXT NOT NULL,
+      PRIMARY KEY (notificationId, userId),
+      FOREIGN KEY (notificationId) REFERENCES notifications(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_notification_reads_user ON notification_reads(userId);
+  `);
+
+  // Migration: Rename old status values to new ones
+  try {
+    const r = db.prepare(`UPDATE orders SET status = 'design_phase' WHERE status = 'in_progress'`).run();
+    if (r.changes > 0) console.log(`Migrated ${r.changes} orders from in_progress to design_phase`);
+  } catch (e) {
+    console.error('Error migrating order statuses:', e.message);
+  }
+
   console.log('Database initialized successfully');
 }
 

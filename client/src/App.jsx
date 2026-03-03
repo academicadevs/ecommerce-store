@@ -11,6 +11,7 @@ import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
 import CustomRequest from './pages/CustomRequest';
 import QuickRequest from './pages/QuickRequest';
+import WebsiteRequest from './pages/WebsiteRequest';
 import MetaAdsCampaign from './pages/MetaAdsCampaign';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
@@ -31,6 +32,7 @@ import ManageOrders from './pages/admin/ManageOrders';
 import ManageUsers from './pages/admin/ManageUsers';
 import Reports from './pages/admin/Reports';
 import AuditLog from './pages/admin/AuditLog';
+import AdminNotifications from './pages/admin/Notifications';
 
 // Protected Route Component
 function ProtectedRoute({ children, adminOnly = false }) {
@@ -83,6 +85,7 @@ export default function App() {
               <Route path="/products/:id" element={<ProductDetail />} />
               <Route path="/custom-request" element={<CustomRequest />} />
               <Route path="/quick-request" element={<QuickRequest />} />
+              <Route path="/website-request" element={<WebsiteRequest />} />
               <Route path="/meta-ads" element={<MetaAdsCampaign />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
@@ -104,6 +107,7 @@ export default function App() {
               <Route path="/admin/users" element={<ProtectedRoute adminOnly><ManageUsers /></ProtectedRoute>} />
               <Route path="/admin/reports" element={<ProtectedRoute adminOnly><Reports /></ProtectedRoute>} />
               <Route path="/admin/audit-log" element={<ProtectedRoute adminOnly><AuditLog /></ProtectedRoute>} />
+              <Route path="/admin/notifications" element={<ProtectedRoute adminOnly><AdminNotifications /></ProtectedRoute>} />
 
               {/* 404 */}
               <Route path="*" element={<Navigate to="/" replace />} />

@@ -8,24 +8,28 @@ import { formatDateOnlyPT } from '../../utils/dateFormat';
 
 const statusLabels = {
   new: 'New Request Received',
-  waiting_feedback: 'Waiting for Feedback',
-  in_progress: 'In Progress',
-  on_hold: 'On Hold',
-  waiting_signoff: 'Waiting for Sign Off',
+  gathering_details: 'Gathering Project Details',
+  design_phase: 'Design Phase',
   submitted_to_kimp360: 'Submitted to Kimp360',
-  sent_to_print: 'Sent to Print',
+  internal_review: 'Internal Review',
+  waiting_feedback: 'Waiting for Feedback',
+  waiting_signoff: 'Waiting for Sign Off',
+  sent_to_print: 'Sent to Print / Third-Party',
   completed: 'Completed',
+  on_hold: 'On Hold',
 };
 
 const statusBadgeClass = {
   new: 'badge-info',
-  waiting_feedback: 'badge-warning',
-  in_progress: 'badge-info',
-  on_hold: 'badge-warning',
-  waiting_signoff: 'badge-info',
+  gathering_details: 'badge-info',
+  design_phase: 'badge-info',
   submitted_to_kimp360: 'badge-info',
+  internal_review: 'badge-info',
+  waiting_feedback: 'badge-warning',
+  waiting_signoff: 'badge-info',
   sent_to_print: 'badge-info',
   completed: 'badge-success',
+  on_hold: 'badge-warning',
 };
 
 export default function AdminDashboard() {
@@ -34,7 +38,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
-  const [totalUnread, setTotalUnread] = useState({ messages: 0, feedback: 0 });
+  const [unreadCount, setUnreadCount] = useState(0);
   const [recentActivity, setRecentActivity] = useState([]);
 
   useEffect(() => {
@@ -47,13 +51,13 @@ export default function AdminDashboard() {
   usePolling(async () => {
     const promises = [
       adminAPI.getStats(),
-      adminAPI.getRecentNotifications(),
+      adminAPI.getNotificationsBell(),
     ];
     if (isSuperAdmin) promises.push(adminAPI.getAuditLogRecent(8));
     const results = await Promise.all(promises);
     setStats(results[0].data.stats);
     setNotifications(results[1].data.notifications || []);
-    setTotalUnread(results[1].data.totalUnread || { messages: 0, feedback: 0 });
+    setUnreadCount(results[1].data.unreadCount || 0);
     if (isSuperAdmin && results[2]) setRecentActivity(results[2].data.entries || []);
   }, 30000, true);
 
@@ -79,9 +83,9 @@ export default function AdminDashboard() {
 
   const loadNotifications = async () => {
     try {
-      const response = await adminAPI.getRecentNotifications();
+      const response = await adminAPI.getNotificationsBell();
       setNotifications(response.data.notifications || []);
-      setTotalUnread(response.data.totalUnread || { messages: 0, feedback: 0 });
+      setUnreadCount(response.data.unreadCount || 0);
     } catch (error) {
       console.error('Failed to load notifications:', error);
     }
@@ -110,7 +114,7 @@ export default function AdminDashboard() {
     );
   }
 
-  const totalUnreadCount = (totalUnread.messages || 0) + (totalUnread.feedback || 0);
+  const totalUnreadCount = unreadCount;
 
   const statCards = [
     {
@@ -155,7 +159,7 @@ export default function AdminDashboard() {
         </svg>
       ),
       color: totalUnreadCount > 0 ? 'bg-red-500' : 'bg-gray-400',
-      link: '/admin/orders',
+      link: '/admin/notifications',
     },
   ];
 
@@ -299,59 +303,59 @@ export default function AdminDashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
               New Activity
-              <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                {notifications.length}
-              </span>
+              {unreadCount > 0 && (
+                <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
             </h2>
-            <Link to="/admin/orders" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-              View All Requests →
+            <Link to="/admin/notifications" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
+              View All →
             </Link>
           </div>
           <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
-            {notifications.map((notif) => (
-              <Link
-                key={`${notif.type}-${notif.id}`}
-                to="/admin/orders"
-                className="block px-6 py-4 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-start gap-3">
-                  {notif.type === 'message' ? (
-                    <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            {notifications.map((notif) => {
+              const iconConfig = {
+                message: { bg: 'bg-blue-100', color: 'text-blue-600', path: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+                feedback: { bg: 'bg-purple-100', color: 'text-purple-600', path: 'M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z' },
+                new_order: { bg: 'bg-green-100', color: 'text-green-600', path: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
+                status_change: { bg: 'bg-orange-100', color: 'text-orange-600', path: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' },
+                user_signup: { bg: 'bg-teal-100', color: 'text-teal-600', path: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z' },
+                proof_signoff: { bg: 'bg-emerald-100', color: 'text-emerald-600', path: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+              };
+              const ic = iconConfig[notif.type] || { bg: 'bg-gray-100', color: 'text-gray-600', path: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' };
+              const navTo = notif.type === 'user_signup' ? '/admin/users' : notif.orderId ? `/admin/orders?orderId=${notif.orderId}` : '/admin/orders';
+
+              return (
+                <Link
+                  key={notif.id}
+                  to={navTo}
+                  className={`block px-6 py-4 hover:bg-gray-50 transition-colors ${!notif.isRead ? 'bg-blue-50/40' : ''}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`flex-shrink-0 w-8 h-8 ${ic.bg} rounded-full flex items-center justify-center`}>
+                      <svg className={`w-4 h-4 ${ic.color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={ic.path} />
                       </svg>
                     </div>
-                  ) : (
-                    <div className="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                      </svg>
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-gray-900">
-                        {notif.type === 'message' ? 'New Reply' : 'New Proof Feedback'}
-                        <span className="font-mono text-gray-500 ml-2">#{notif.orderNumber}</span>
-                      </p>
-                      <span className="text-xs text-gray-400">{formatTimeAgo(notif.createdAt)}</span>
-                    </div>
-                    <p className="text-sm text-gray-600 truncate mt-0.5">
-                      {notif.type === 'message' ? (
-                        <>From {notif.senderEmail}: {notif.body}</>
-                      ) : (
-                        <>{notif.authorName}: {notif.comment}</>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className={`text-sm ${!notif.isRead ? 'font-semibold' : 'font-medium'} text-gray-900 truncate`}>
+                          {notif.title}
+                          {notif.metadata?.orderNumber && (
+                            <span className="font-mono text-gray-500 ml-2 font-normal">#{notif.metadata.orderNumber}</span>
+                          )}
+                        </p>
+                        <span className="text-xs text-gray-400 ml-2 flex-shrink-0">{formatTimeAgo(notif.createdAt)}</span>
+                      </div>
+                      {notif.body && (
+                        <p className="text-sm text-gray-600 truncate mt-0.5">{notif.body}</p>
                       )}
-                    </p>
-                    {notif.type === 'feedback' && notif.proofTitle && (
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        On proof: {notif.proofTitle} (v{notif.proofVersion})
-                      </p>
-                    )}
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}

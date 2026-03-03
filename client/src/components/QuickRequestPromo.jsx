@@ -3,7 +3,7 @@ import { useLocation, Link } from 'react-router-dom';
 
 const DISMISSED_KEY = 'quickRequestPromoDismissed';
 
-const HIDDEN_PATHS = ['/quick-request', '/login', '/register'];
+const HIDDEN_PATHS = ['/quick-request', '/website-request', '/login', '/register'];
 
 export default function QuickRequestPromo() {
   const { pathname } = useLocation();
