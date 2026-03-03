@@ -221,7 +221,7 @@ export default function MetaAdsCampaign() {
 
       setSuccess(true);
       setTimeout(() => {
-        navigate('/orders');
+        navigate(isAdminUser ? '/admin/orders' : '/orders');
       }, 3000);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to submit request. Please try again.');

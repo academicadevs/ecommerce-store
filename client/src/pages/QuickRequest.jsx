@@ -675,8 +675,8 @@ export default function QuickRequest() {
             </p>
             <div className="flex flex-col gap-3">
               {isAuthenticated ? (
-                <Link to="/orders" className="btn btn-primary py-3">
-                  View My Requests
+                <Link to={isAdmin ? "/admin/orders" : "/orders"} className="btn btn-primary py-3">
+                  {isAdmin ? 'Manage Requests' : 'View My Requests'}
                 </Link>
               ) : (
                 <Link to="/" className="btn btn-primary py-3">

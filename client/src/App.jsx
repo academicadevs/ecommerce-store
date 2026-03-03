@@ -1,9 +1,18 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import QuickRequestPromo from './components/QuickRequestPromo';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
 
 // Pages
 import Home from './pages/Home';
@@ -76,6 +85,7 @@ export default function App() {
       {/* Main Layout Routes */}
       <Route path="*" element={
         <div className="min-h-screen flex flex-col bg-gray-50">
+          <ScrollToTop />
           <Header />
           <main className="flex-grow">
             <Routes>

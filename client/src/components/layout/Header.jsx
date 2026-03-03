@@ -134,7 +134,7 @@ export default function Header() {
                     <span className="text-sm font-medium">Profile</span>
                   </Link>
                   <Link
-                    to="/orders"
+                    to={isAdmin ? "/admin/orders" : "/orders"}
                     className="hidden sm:flex items-center gap-1 text-charcoal hover:text-academica-blue transition-colors"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -343,11 +343,11 @@ export default function Header() {
                   My Profile
                 </Link>
                 <Link
-                  to="/orders"
+                  to={isAdmin ? "/admin/orders" : "/orders"}
                   className="block text-charcoal py-1"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  My Requests
+                  {isAdmin ? 'Manage Requests' : 'My Requests'}
                 </Link>
                 {isAdmin && (
                   <>

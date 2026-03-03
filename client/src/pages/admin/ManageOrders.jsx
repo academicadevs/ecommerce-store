@@ -131,6 +131,172 @@ function KanbanCard({ order, unreadCount, assigneeColor, isHighlighted, onViewDe
   );
 }
 
+function StatusListModal({ status, orders, admins, isOpen, onClose, onViewOrder, unreadCounts }) {
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
+  const [assigneeFilter, setAssigneeFilter] = useState('all');
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  let filtered = orders.filter(o => o.status === status);
+
+  // Filter by assignee
+  if (assigneeFilter === 'unassigned') {
+    filtered = filtered.filter(o => !o.assignedTo);
+  } else if (assigneeFilter !== 'all') {
+    filtered = filtered.filter(o => o.assignedTo === assigneeFilter);
+  }
+
+  // Search
+  if (search.trim()) {
+    const q = search.toLowerCase();
+    filtered = filtered.filter(o =>
+      (o.shippingInfo?.contactName || '').toLowerCase().includes(q) ||
+      (o.shippingInfo?.schoolName || '').toLowerCase().includes(q) ||
+      (o.orderNumber || '').toLowerCase().includes(q) ||
+      (o.items || []).some(item => (item.name || '').toLowerCase().includes(q))
+    );
+  }
+
+  // Sort
+  filtered.sort((a, b) => {
+    if (sortBy === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
+    if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+    if (sortBy === 'name') return (a.shippingInfo?.contactName || '').localeCompare(b.shippingInfo?.contactName || '');
+    if (sortBy === 'school') return (a.shippingInfo?.schoolName || '').localeCompare(b.shippingInfo?.schoolName || '');
+    return 0;
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-hidden" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl w-[95vw] max-w-6xl h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className={`${columnHeaderColors[status]} text-white px-6 py-4 rounded-t-xl flex items-center justify-between`}>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-bold">{statusLabels[status]}</h2>
+            <span className="bg-white/20 text-white text-sm font-bold px-2.5 py-0.5 rounded-full">
+              {filtered.length}
+            </span>
+          </div>
+          <button onClick={onClose} className="text-white/80 hover:text-white">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div className="px-6 py-3 border-b border-gray-200 flex flex-wrap gap-3 items-end bg-gray-50">
+          <div className="flex-1 min-w-[180px]">
+            <label className="block text-xs font-medium text-gray-500 mb-1">Search</label>
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Name, school, order #, item..."
+              className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-academica-blue"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Sort</label>
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-academica-blue"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="name">Name A-Z</option>
+              <option value="school">School A-Z</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Assigned To</label>
+            <select
+              value={assigneeFilter}
+              onChange={e => setAssigneeFilter(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-academica-blue"
+            >
+              <option value="all">All</option>
+              <option value="unassigned">Unassigned</option>
+              {admins.map(a => (
+                <option key={a.id} value={a.id}>{a.contactName || a.email}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* List */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <div className="text-center py-12 text-gray-400 text-sm">No requests found</div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr>
+                  <th className="px-6 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Request</th>
+                  <th className="px-6 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
+                  <th className="px-6 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
+                  <th className="px-6 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Assigned</th>
+                  <th className="px-6 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map(order => {
+                  const unread = unreadCounts[order.id];
+                  return (
+                    <tr
+                      key={order.id}
+                      onClick={() => onViewOrder(order)}
+                      className="hover:bg-blue-50 cursor-pointer transition-colors"
+                    >
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm text-gray-700">{order.orderNumber || order.id.slice(0, 8)}</span>
+                          {unread?.total > 0 && (
+                            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{unread.total}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-3">
+                        <p className="text-sm font-medium text-gray-900 truncate max-w-[150px]">{order.shippingInfo?.contactName || 'Unknown'}</p>
+                        <p className="text-xs text-gray-400 truncate max-w-[150px]">{order.shippingInfo?.schoolName}</p>
+                      </td>
+                      <td className="px-6 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {(order.items || []).slice(0, 2).map((item, i) => (
+                            <span key={i} className="text-[11px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded truncate max-w-[100px]">{item.name}</span>
+                          ))}
+                          {(order.items || []).length > 2 && (
+                            <span className="text-[11px] text-gray-400">+{order.items.length - 2}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-3">
+                        <span className="text-sm text-gray-600 truncate">{order.assignedToName || <span className="text-gray-300 italic">Unassigned</span>}</span>
+                      </td>
+                      <td className="px-6 py-3">
+                        <span className="text-sm text-gray-500 whitespace-nowrap">{formatDateShortPT(order.createdAt)}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ManageOrders() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -145,6 +311,7 @@ export default function ManageOrders() {
   const [searchQuery, setSearchQuery] = useState('');
   const [unreadCounts, setUnreadCounts] = useState({});
   const [highlightedOrderId, setHighlightedOrderId] = useState(null);
+  const [statusListStatus, setStatusListStatus] = useState(null);
 
   // Drag state
   const [draggedOrder, setDraggedOrder] = useState(null);
@@ -478,7 +645,10 @@ export default function ManageOrders() {
               onDrop={(e) => handleColumnDrop(e, status)}
             >
               {/* Column Header */}
-              <div className={`${columnHeaderColors[status]} text-white px-3 py-2.5 rounded-t-lg flex items-center justify-between`}>
+              <div
+                className={`${columnHeaderColors[status]} text-white px-3 py-2.5 rounded-t-lg flex items-center justify-between cursor-pointer hover:brightness-110 transition-all`}
+                onClick={() => setStatusListStatus(status)}
+              >
                 <span className="text-sm font-semibold truncate">{statusLabels[status]}</span>
                 <span className="bg-white/20 text-white text-xs font-bold px-2 py-0.5 rounded-full ml-2 flex-shrink-0">
                   {columnOrders.length}
@@ -510,6 +680,20 @@ export default function ManageOrders() {
           );
         })}
       </div>
+
+      {/* Status List Modal */}
+      <StatusListModal
+        status={statusListStatus}
+        orders={filteredOrders}
+        admins={admins}
+        isOpen={!!statusListStatus}
+        onClose={() => setStatusListStatus(null)}
+        onViewOrder={(order) => {
+          setStatusListStatus(null);
+          handleViewDetails(order);
+        }}
+        unreadCounts={unreadCounts}
+      />
 
       {/* Order Detail Modal */}
       <OrderDetailModal

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ordersAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { formatDateOnlyPT } from '../utils/dateFormat';
 
 export default function OrderConfirmation() {
   const { orderId } = useParams();
+  const { isAdmin } = useAuth();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -36,7 +38,7 @@ export default function OrderConfirmation() {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Request Not Found</h2>
-        <Link to="/orders" className="btn btn-primary">
+        <Link to={isAdmin ? "/admin/orders" : "/orders"} className="btn btn-primary">
           View All Requests
         </Link>
       </div>
@@ -167,7 +169,7 @@ export default function OrderConfirmation() {
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-4 mt-8">
-        <Link to="/orders" className="btn btn-primary flex-1 text-center py-3">
+        <Link to={isAdmin ? "/admin/orders" : "/orders"} className="btn btn-primary flex-1 text-center py-3">
           View All Requests
         </Link>
         <Link to="/products" className="btn btn-secondary flex-1 text-center py-3">
